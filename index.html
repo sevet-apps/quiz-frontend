@@ -13,14 +13,17 @@
             --text-color: #000; 
             --glass-bg: rgba(255,255,255,0.75); 
             --accent: #007aff; 
+            --gray-btn: #e5e5ea;
             --safe-bottom: env(safe-area-inset-bottom, 20px);
         }
         [data-theme="dark"] { 
             --bg-color: #000; 
             --text-color: #fff; 
             --glass-bg: rgba(30,30,30,0.75); 
+            --gray-btn: #2c2c2e;
         }
 
+        /* Глобальный сброс для симметрии */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
         body { 
@@ -29,9 +32,8 @@
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Helvetica, Arial, sans-serif; 
             margin: 0; 
             padding: 0; 
-            /* Используем dvh для корректной высоты на мобильных */
             height: 100dvh; 
-            width: 100%;
+            width: 100vw;
             overflow: hidden; 
         }
 
@@ -40,18 +42,17 @@
             top: 0; left: 0; 
             width: 100%; 
             height: 100%; 
-            padding: 20px; 
-            /* Отступ снизу, чтобы кнопка не налипала на home bar айфона */
-            padding-bottom: calc(20px + var(--safe-bottom));
+            
+            /* СИММЕТРИЧНЫЕ ОТСТУПЫ */
+            padding: 16px 16px calc(16px + var(--safe-bottom)) 16px;
             
             display: flex; 
             flex-direction: column; 
-            justify-content: space-between; /* Распределяем контент: верх, центр, низ */
             
             opacity: 0; 
             pointer-events: none; 
             transition: 0.3s; 
-            transform: scale(0.95); 
+            transform: scale(0.98); 
         }
         
         .screen.active { 
@@ -61,13 +62,14 @@
             z-index: 1;
         }
 
-        /* Обертка для центральной части, чтобы она была ровно посередине */
+        /* Центровщик контента */
         .content-center {
             flex-grow: 1;
             display: flex;
             flex-direction: column;
             justify-content: center;
-            overflow-y: auto; /* Если экран очень маленький, появится скролл внутри */
+            overflow-y: auto; 
+            width: 100%;
         }
 
         .card { 
@@ -78,6 +80,7 @@
             padding: 20px; 
             margin-bottom: 15px; 
             text-align: center; 
+            width: 100%; /* Растягиваем на всю ширину контейнера */
             box-shadow: 0 4px 15px rgba(0,0,0,0.05);
         }
 
@@ -85,10 +88,11 @@
             font-size: 32px;
             font-weight: 800;
             text-align: center;
-            margin-top: 20px;
-            margin-bottom: 10px;
+            margin-top: 40px;
+            margin-bottom: 20px;
         }
 
+        /* Основная кнопка (внизу) */
         .btn { 
             background: var(--accent); 
             color: #fff; 
@@ -99,17 +103,25 @@
             font-size: 17px; 
             font-weight: 600; 
             cursor: pointer; 
-            flex-shrink: 0; /* Чтобы кнопка не сплющивалась */
+            flex-shrink: 0;
+            transition: 0.2s;
             box-shadow: 0 4px 10px rgba(0,122,255,0.3);
         }
         .btn:active { transform: scale(0.96); }
+        .btn:disabled { 
+            background: var(--gray-btn); 
+            color: #8e8e93; 
+            box-shadow: none; 
+            cursor: default; 
+            transform: none;
+        }
 
-        /* Кнопки выбора класса */
         .class-selector {
             display: flex; 
             gap: 10px; 
             justify-content: center; 
             margin-bottom: 20px;
+            width: 100%;
         }
         .class-btn {
             background: var(--accent);
@@ -117,13 +129,13 @@
             border: none;
             border-radius: 12px;
             padding: 12px 0;
-            width: 60px;
+            flex: 1; /* Растягиваем кнопки равномерно */
             font-size: 18px;
             font-weight: 600;
             opacity: 0.5;
             transition: 0.2s;
         }
-        .class-btn.active { opacity: 1; transform: scale(1.1); box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        .class-btn.active { opacity: 1; transform: scale(1.05); box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
 
         .input { 
             background: rgba(128,128,128,0.1); 
@@ -142,23 +154,26 @@
             padding: 16px; 
             border-radius: 14px; 
             margin-bottom: 10px; 
-            border: 1px solid rgba(128,128,128,0.2); 
+            border: 2px solid transparent; /* Резервируем место под рамку */
             cursor: pointer; 
             transition: 0.2s; 
             font-size: 17px;
             font-weight: 500;
+            width: 100%;
+            text-align: left;
         }
         .opt:active { transform: scale(0.98); }
-        .opt.selected { background: rgba(0,122,255,0.1); border-color: var(--accent); color: var(--accent); font-weight: 700; }
+        .opt.selected { 
+            background: rgba(0,122,255,0.1); 
+            border-color: var(--accent); 
+            color: var(--accent); 
+            font-weight: 600; 
+        }
 
         .lb-item { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid rgba(128,128,128,0.1); font-size: 16px; }
         
         .loader-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;
         }
         .loader { border: 4px solid rgba(128,128,128,0.2); border-top: 4px solid var(--accent); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 20px;}
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -167,9 +182,9 @@
 <body>
 
     <div id="login" class="screen active">
-        <div class="app-title">Викторина</div>
-        
         <div class="content-center">
+            <div class="app-title">Викторина</div>
+            
             <div class="card">
                 <p style="margin-top:0; color:#8e8e93; font-weight:600; font-size:13px; text-transform:uppercase;">Выберите класс</p>
                 <div class="class-selector">
@@ -187,16 +202,16 @@
     </div>
 
     <div id="game" class="screen">
-        <h3 id="qCounter" style="text-align:center; margin-top: 10px; color: #8e8e93;">Вопрос 1</h3>
+        <h3 id="qCounter" style="text-align:center; margin-top: 20px; color: #8e8e93;">Вопрос 1</h3>
         
         <div class="content-center">
             <div class="card">
-                <h2 id="qText" style="font-size: 22px; margin: 0;">Загрузка...</h2>
+                <h2 id="qText" style="font-size: 20px; margin: 0; line-height: 1.4;">Загрузка...</h2>
             </div>
-            <div id="opts" style="margin-top: 10px;"></div>
+            <div id="opts" style="width: 100%;"></div>
         </div>
         
-        <div style="height: 20px;"></div>
+        <button class="btn" id="confirmBtn" onclick="submitAnswer()" disabled>Ответить</button>
     </div>
 
     <div id="result" class="screen">
@@ -204,7 +219,7 @@
         
         <div class="content-center">
             <div class="card">
-                <h1 style="margin:0; font-size: 20px; color: #8e8e93;">Ваш результат</h1>
+                <h1 style="margin:0; font-size: 18px; color: #8e8e93;">Ваш результат</h1>
                 <h2 id="finalScore" style="color:var(--accent); font-size:60px; margin: 10px 0;">0%</h2>
             </div>
             
@@ -234,7 +249,6 @@
         const API_URL = 'https://my-quiz-server.onrender.com'; 
         // ----------------------------------------
 
-        // Автоматически определяем тему
         if (tg.colorScheme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
 
         const socket = io(API_URL);
@@ -243,15 +257,14 @@
         let answers = [];
         let curIdx = 0;
         let myTeam = "";
+        let selectedOptionIndex = null; // Храним выбранный, но не подтвержденный ответ
 
-        // Убираем экран загрузки при подключении
         socket.on('connect', () => {
             document.getElementById('loading').classList.remove('active');
         });
 
         function setClass(n, btn) { 
             curClass = n; 
-            // Визуальное переключение кнопок
             document.querySelectorAll('.class-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             tg.HapticFeedback.selectionChanged();
@@ -264,17 +277,14 @@
             if (!myTeam) {
                 tg.HapticFeedback.notificationOccurred('error');
                 input.focus();
-                // Тряска поля ввода
                 input.style.border = "1px solid red";
                 setTimeout(() => input.style.border = "none", 300);
                 return;
             }
             
-            // Показываем лоадер
             document.getElementById('loading').classList.add('active');
             
             try {
-                // Получаем вопросы
                 const res = await fetch(`${API_URL}/api/questions/${curClass}`);
                 questions = await res.json();
                 
@@ -286,7 +296,6 @@
 
                 socket.emit('join_class', curClass);
                 
-                // Переключаем экран
                 document.getElementById('loading').classList.remove('active');
                 document.getElementById('login').classList.remove('active');
                 document.getElementById('game').classList.add('active');
@@ -302,10 +311,14 @@
         function renderQ() {
             if (curIdx >= questions.length) return finish();
             
+            // Сбрасываем выбор и кнопку
+            selectedOptionIndex = null;
+            document.getElementById('confirmBtn').disabled = true;
+            document.getElementById('confirmBtn').innerText = (curIdx === questions.length - 1) ? "Завершить тест" : "Ответить";
+
             const q = questions[curIdx];
             document.getElementById('qCounter').innerText = `Вопрос ${curIdx+1} из ${questions.length}`;
             
-            // Анимация смены текста
             const txt = document.getElementById('qText');
             txt.style.opacity = 0;
             setTimeout(() => {
@@ -320,27 +333,42 @@
                 const btn = document.createElement('div');
                 btn.className = 'opt';
                 btn.innerText = txt;
-                btn.onclick = () => select(q.id, i, btn);
+                btn.onclick = () => selectOption(i, btn);
                 div.appendChild(btn);
             });
         }
 
-        function select(qid, idx, el) {
-            // Защита от двойного клика
-            if(document.querySelector('.opt.selected')) return;
+        // 1. Просто выбираем (подсвечиваем), но не отправляем
+        function selectOption(idx, el) {
+            // Убираем подсветку у всех
+            document.querySelectorAll('.opt').forEach(b => b.classList.remove('selected'));
             
+            // Подсвечиваем текущий
             el.classList.add('selected');
+            
+            selectedOptionIndex = idx;
+            
+            // Активируем кнопку "Ответить"
+            document.getElementById('confirmBtn').disabled = false;
+            
+            tg.HapticFeedback.selectionChanged();
+        }
+
+        // 2. Нажимаем кнопку "Ответить" (переход дальше)
+        function submitAnswer() {
+            if (selectedOptionIndex === null) return; // На всякий случай
+
+            const q = questions[curIdx];
+            answers.push({ question_id: q.id, selected_index: selectedOptionIndex });
+            
             tg.HapticFeedback.impactOccurred('medium');
             
-            answers.push({ question_id: qid, selected_index: idx });
             curIdx++;
-            
-            // Небольшая задержка перед следующим вопросом
-            setTimeout(renderQ, 400);
+            renderQ();
         }
 
         async function finish() {
-            document.getElementById('loading').classList.add('active'); // Лоадер пока отправляем
+            document.getElementById('loading').classList.add('active');
             
             try {
                 const res = await fetch(`${API_URL}/api/submit`, {
@@ -355,11 +383,7 @@
                 
                 document.getElementById('finalScore').innerText = data.percentage + '%';
                 
-                confetti({
-                    particleCount: 150,
-                    spread: 70,
-                    origin: { y: 0.6 }
-                });
+                confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
                 tg.HapticFeedback.notificationOccurred('success');
                 
                 loadLb();
@@ -385,15 +409,12 @@
                 data.forEach((r, i) => {
                     const row = document.createElement('div');
                     row.className = 'lb-item';
-                    
-                    // Выделяем свою команду
                     if(r.team_name === myTeam) {
                         row.style.border = '1px solid var(--accent)';
                         row.style.backgroundColor = 'rgba(0,122,255,0.05)';
                         row.style.borderRadius = '10px';
                         row.style.fontWeight = 'bold';
                     }
-                    
                     row.innerHTML = `
                         <div style="display:flex; align-items:center; gap:10px;">
                             <span style="font-weight:800; color:#8e8e93; width:20px;">${i+1}</span> 
@@ -403,9 +424,7 @@
                     `;
                     div.appendChild(row);
                 });
-            } catch (e) {
-                console.error(e);
-            }
+            } catch (e) { console.error(e); }
         }
     </script>
 </body>
