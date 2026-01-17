@@ -127,21 +127,21 @@
     </div>
 
     <div id="result" class="screen">
-        <div class="app-title" style="margin-top: 20px; margin-bottom: 10px;">Итоги</div>
+        <div class="app-title" style="margin-top: 20px; margin-bottom: 10px;">Результаты</div>
         
         <div class="content-center">
             <div style="text-align: center;">
                 <div class="live-indicator">
-                    <div class="live-dot"></div> LIVE: Ожидание других
+                    <div class="live-dot"></div> LIVE
                 </div>
             </div>
 
-            <div class="card">
+            <div class="card" id="scoreCard">
                 <h1 style="margin:0; font-size: 18px; color: #8e8e93;">Ваш результат</h1>
                 <h2 id="finalScore" style="color:var(--accent); font-size:60px; margin: 10px 0;">0%</h2>
             </div>
             
-            <div class="card" style="flex-grow: 1; overflow-y: auto; max-height: 40vh; position: relative;">
+            <div class="card" style="flex-grow: 1; overflow-y: auto; max-height: 60vh; position: relative;">
                 <h3 style="margin-top:0; margin-bottom: 15px;">Таблица лидеров</h3>
                 <div id="lb">
                     <div class="loader"></div>
@@ -149,7 +149,7 @@
             </div>
         </div>
 
-        <button class="btn" onclick="location.reload()">В меню</button>
+        <button class="btn" id="exitBtn" onclick="location.reload()">В меню</button>
     </div>
 
     <div id="loading" class="screen" style="z-index: 100; background: var(--bg-color);">
@@ -191,6 +191,7 @@
         async function startGame() {
             const input = document.getElementById('teamName');
             myTeam = input.value.trim();
+            
             if (!myTeam) {
                 tg.HapticFeedback.notificationOccurred('error');
                 input.focus();
@@ -198,6 +199,32 @@
                 setTimeout(() => input.style.border = "none", 300);
                 return;
             }
+
+            // --- РЕЖИМ УЧИТЕЛЯ ---
+            if (myTeam === "учитель1234") {
+                // 1. Скрываем экран входа
+                document.getElementById('login').classList.remove('active');
+                
+                // 2. Показываем экран результатов
+                document.getElementById('result').classList.add('active');
+                
+                // 3. Прячем карточку с "Ваш результат"
+                document.getElementById('scoreCard').style.display = 'none';
+                
+                // 4. Подключаемся к сокету нужного класса, чтобы видеть обновления
+                socket.emit('join_class', curClass);
+                
+                // 5. Грузим таблицу сразу
+                loadLb();
+                
+                // 6. Подписываемся на обновления
+                socket.on('leaderboard_update', loadLb);
+                
+                tg.HapticFeedback.notificationOccurred('success');
+                return; // ПРЕКРАЩАЕМ ВЫПОЛНЕНИЕ ФУНКЦИИ (ИГРА НЕ НАЧИНАЕТСЯ)
+            }
+            // ---------------------
+
             document.getElementById('loading').classList.add('active');
             try {
                 const res = await fetch(`${API_URL}/api/questions/${curClass}`);
@@ -273,15 +300,8 @@
                 confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
                 tg.HapticFeedback.notificationOccurred('success');
                 
-                // Сначала загружаем текущее состояние
                 loadLb();
-                
-                // Включаем прослушку обновлений
-                socket.on('leaderboard_update', () => {
-                    console.log("Пришло обновление таблицы!");
-                    loadLb(); // Перезагружаем список при сигнале от сервера
-                });
-
+                socket.on('leaderboard_update', loadLb);
             } catch (e) {
                 alert("Ошибка отправки результатов");
                 document.getElementById('loading').classList.remove('active');
@@ -303,12 +323,16 @@
                 data.forEach((r, i) => {
                     const row = document.createElement('div');
                     row.className = 'lb-item';
+                    
+                    // Если это учитель - не подсвечиваем его имя (его там и нет)
+                    // Если это ученик - подсвечиваем
                     if(r.team_name === myTeam) {
                         row.style.border = '1px solid var(--accent)';
                         row.style.backgroundColor = 'rgba(0,122,255,0.05)';
                         row.style.borderRadius = '10px';
                         row.style.fontWeight = 'bold';
                     }
+                    
                     row.innerHTML = `
                         <div style="display:flex; align-items:center; gap:10px;">
                             <span style="font-weight:800; color:#8e8e93; width:20px;">${i+1}</span> 
