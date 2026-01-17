@@ -15,6 +15,7 @@
             --accent: #007aff; 
             --gray-btn: #e5e5ea;
             --safe-bottom: env(safe-area-inset-bottom, 20px);
+            --live-color: #ff3b30;
         }
         [data-theme="dark"] { 
             --bg-color: #000; 
@@ -23,160 +24,71 @@
             --gray-btn: #2c2c2e;
         }
 
-        /* Глобальный сброс для симметрии */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
         body { 
             background: var(--bg-color); 
             color: var(--text-color); 
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Helvetica, Arial, sans-serif; 
-            margin: 0; 
-            padding: 0; 
-            height: 100dvh; 
-            width: 100vw;
-            overflow: hidden; 
+            margin: 0; padding: 0; 
+            height: 100dvh; width: 100vw; overflow: hidden; 
         }
 
         .screen { 
-            position: absolute; 
-            top: 0; left: 0; 
-            width: 100%; 
-            height: 100%; 
-            
-            /* СИММЕТРИЧНЫЕ ОТСТУПЫ */
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
             padding: 16px 16px calc(16px + var(--safe-bottom)) 16px;
-            
-            display: flex; 
-            flex-direction: column; 
-            
-            opacity: 0; 
-            pointer-events: none; 
-            transition: 0.3s; 
-            transform: scale(0.98); 
+            display: flex; flex-direction: column; 
+            opacity: 0; pointer-events: none; transition: 0.3s; transform: scale(0.98); 
         }
-        
-        .screen.active { 
-            opacity: 1; 
-            pointer-events: auto; 
-            transform: scale(1); 
-            z-index: 1;
-        }
+        .screen.active { opacity: 1; pointer-events: auto; transform: scale(1); z-index: 1; }
 
-        /* Центровщик контента */
-        .content-center {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            overflow-y: auto; 
-            width: 100%;
-        }
+        .content-center { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; overflow-y: auto; width: 100%; }
 
         .card { 
-            background: var(--glass-bg); 
-            backdrop-filter: blur(20px); 
-            -webkit-backdrop-filter: blur(20px); 
-            border-radius: 20px; 
-            padding: 20px; 
-            margin-bottom: 15px; 
-            text-align: center; 
-            width: 100%; /* Растягиваем на всю ширину контейнера */
+            background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); 
+            border-radius: 20px; padding: 20px; margin-bottom: 15px; text-align: center; width: 100%; 
             box-shadow: 0 4px 15px rgba(0,0,0,0.05);
         }
 
-        .app-title {
-            font-size: 32px;
-            font-weight: 800;
-            text-align: center;
-            margin-top: 40px;
-            margin-bottom: 20px;
-        }
+        .app-title { font-size: 32px; font-weight: 800; text-align: center; margin-top: 40px; margin-bottom: 20px; }
 
-        /* Основная кнопка (внизу) */
         .btn { 
-            background: var(--accent); 
-            color: #fff; 
-            border: none; 
-            padding: 16px; 
-            width: 100%; 
-            border-radius: 14px; 
-            font-size: 17px; 
-            font-weight: 600; 
-            cursor: pointer; 
-            flex-shrink: 0;
-            transition: 0.2s;
-            box-shadow: 0 4px 10px rgba(0,122,255,0.3);
+            background: var(--accent); color: #fff; border: none; padding: 16px; width: 100%; 
+            border-radius: 14px; font-size: 17px; font-weight: 600; cursor: pointer; flex-shrink: 0; 
+            transition: 0.2s; box-shadow: 0 4px 10px rgba(0,122,255,0.3);
         }
         .btn:active { transform: scale(0.96); }
-        .btn:disabled { 
-            background: var(--gray-btn); 
-            color: #8e8e93; 
-            box-shadow: none; 
-            cursor: default; 
-            transform: none;
-        }
+        .btn:disabled { background: var(--gray-btn); color: #8e8e93; box-shadow: none; cursor: default; transform: none; }
 
-        .class-selector {
-            display: flex; 
-            gap: 10px; 
-            justify-content: center; 
-            margin-bottom: 20px;
-            width: 100%;
-        }
-        .class-btn {
-            background: var(--accent);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            padding: 12px 0;
-            flex: 1; /* Растягиваем кнопки равномерно */
-            font-size: 18px;
-            font-weight: 600;
-            opacity: 0.5;
-            transition: 0.2s;
-        }
+        .class-selector { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; width: 100%; }
+        .class-btn { background: var(--accent); color: white; border: none; border-radius: 12px; padding: 12px 0; flex: 1; font-size: 18px; font-weight: 600; opacity: 0.5; transition: 0.2s; }
         .class-btn.active { opacity: 1; transform: scale(1.05); box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
 
-        .input { 
-            background: rgba(128,128,128,0.1); 
-            border: none; 
-            padding: 16px; 
-            border-radius: 14px; 
-            width: 100%; 
-            font-size: 17px; 
-            text-align: center; 
-            color: var(--text-color); 
-            outline: none; 
-        }
+        .input { background: rgba(128,128,128,0.1); border: none; padding: 16px; border-radius: 14px; width: 100%; font-size: 17px; text-align: center; color: var(--text-color); outline: none; }
 
-        .opt { 
-            background: var(--glass-bg); 
-            padding: 16px; 
-            border-radius: 14px; 
-            margin-bottom: 10px; 
-            border: 2px solid transparent; /* Резервируем место под рамку */
-            cursor: pointer; 
-            transition: 0.2s; 
-            font-size: 17px;
-            font-weight: 500;
-            width: 100%;
-            text-align: left;
-        }
+        .opt { background: var(--glass-bg); padding: 16px; border-radius: 14px; margin-bottom: 10px; border: 2px solid transparent; cursor: pointer; transition: 0.2s; font-size: 17px; font-weight: 500; width: 100%; text-align: left; }
         .opt:active { transform: scale(0.98); }
-        .opt.selected { 
-            background: rgba(0,122,255,0.1); 
-            border-color: var(--accent); 
-            color: var(--accent); 
-            font-weight: 600; 
-        }
+        .opt.selected { background: rgba(0,122,255,0.1); border-color: var(--accent); color: var(--accent); font-weight: 600; }
 
         .lb-item { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid rgba(128,128,128,0.1); font-size: 16px; }
         
-        .loader-container {
-            display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;
-        }
+        .loader-container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; }
         .loader { border: 4px solid rgba(128,128,128,0.2); border-top: 4px solid var(--accent); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 20px;}
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* ИНДИКАТОР LIVE */
+        .live-indicator {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: rgba(255, 59, 48, 0.1); color: var(--live-color);
+            padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 700;
+            margin-bottom: 10px;
+        }
+        .live-dot {
+            width: 8px; height: 8px; background: var(--live-color); border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+
     </style>
 </head>
 <body>
@@ -215,16 +127,22 @@
     </div>
 
     <div id="result" class="screen">
-        <div class="app-title">Итоги</div>
+        <div class="app-title" style="margin-top: 20px; margin-bottom: 10px;">Итоги</div>
         
         <div class="content-center">
+            <div style="text-align: center;">
+                <div class="live-indicator">
+                    <div class="live-dot"></div> LIVE: Ожидание других
+                </div>
+            </div>
+
             <div class="card">
                 <h1 style="margin:0; font-size: 18px; color: #8e8e93;">Ваш результат</h1>
                 <h2 id="finalScore" style="color:var(--accent); font-size:60px; margin: 10px 0;">0%</h2>
             </div>
             
-            <div class="card" style="flex-grow: 1; overflow-y: auto; max-height: 40vh;">
-                <h3 style="margin-top:0;">Таблица лидеров</h3>
+            <div class="card" style="flex-grow: 1; overflow-y: auto; max-height: 40vh; position: relative;">
+                <h3 style="margin-top:0; margin-bottom: 15px;">Таблица лидеров</h3>
                 <div id="lb">
                     <div class="loader"></div>
                 </div>
@@ -257,7 +175,7 @@
         let answers = [];
         let curIdx = 0;
         let myTeam = "";
-        let selectedOptionIndex = null; // Храним выбранный, но не подтвержденный ответ
+        let selectedOptionIndex = null;
 
         socket.on('connect', () => {
             document.getElementById('loading').classList.remove('active');
@@ -273,7 +191,6 @@
         async function startGame() {
             const input = document.getElementById('teamName');
             myTeam = input.value.trim();
-            
             if (!myTeam) {
                 tg.HapticFeedback.notificationOccurred('error');
                 input.focus();
@@ -281,28 +198,22 @@
                 setTimeout(() => input.style.border = "none", 300);
                 return;
             }
-            
             document.getElementById('loading').classList.add('active');
-            
             try {
                 const res = await fetch(`${API_URL}/api/questions/${curClass}`);
                 questions = await res.json();
-                
                 if(!questions || questions.length === 0) {
                     alert("Вопросов для этого класса пока нет!");
                     document.getElementById('loading').classList.remove('active');
                     return;
                 }
-
                 socket.emit('join_class', curClass);
-                
                 document.getElementById('loading').classList.remove('active');
                 document.getElementById('login').classList.remove('active');
                 document.getElementById('game').classList.add('active');
-                
                 renderQ();
             } catch(e) { 
-                alert("Ошибка сервера! Проверьте интернет."); 
+                alert("Ошибка сервера!"); 
                 document.getElementById('loading').classList.remove('active');
             }
             tg.HapticFeedback.impactOccurred('light');
@@ -310,25 +221,16 @@
 
         function renderQ() {
             if (curIdx >= questions.length) return finish();
-            
-            // Сбрасываем выбор и кнопку
             selectedOptionIndex = null;
             document.getElementById('confirmBtn').disabled = true;
             document.getElementById('confirmBtn').innerText = (curIdx === questions.length - 1) ? "Завершить тест" : "Ответить";
-
             const q = questions[curIdx];
             document.getElementById('qCounter').innerText = `Вопрос ${curIdx+1} из ${questions.length}`;
-            
             const txt = document.getElementById('qText');
             txt.style.opacity = 0;
-            setTimeout(() => {
-                txt.innerText = q.question_text;
-                txt.style.opacity = 1;
-            }, 200);
-
+            setTimeout(() => { txt.innerText = q.question_text; txt.style.opacity = 1; }, 200);
             const div = document.getElementById('opts');
             div.innerHTML = '';
-            
             q.options.forEach((txt, i) => {
                 const btn = document.createElement('div');
                 btn.className = 'opt';
@@ -338,56 +240,48 @@
             });
         }
 
-        // 1. Просто выбираем (подсвечиваем), но не отправляем
         function selectOption(idx, el) {
-            // Убираем подсветку у всех
             document.querySelectorAll('.opt').forEach(b => b.classList.remove('selected'));
-            
-            // Подсвечиваем текущий
             el.classList.add('selected');
-            
             selectedOptionIndex = idx;
-            
-            // Активируем кнопку "Ответить"
             document.getElementById('confirmBtn').disabled = false;
-            
             tg.HapticFeedback.selectionChanged();
         }
 
-        // 2. Нажимаем кнопку "Ответить" (переход дальше)
         function submitAnswer() {
-            if (selectedOptionIndex === null) return; // На всякий случай
-
+            if (selectedOptionIndex === null) return;
             const q = questions[curIdx];
             answers.push({ question_id: q.id, selected_index: selectedOptionIndex });
-            
             tg.HapticFeedback.impactOccurred('medium');
-            
             curIdx++;
             renderQ();
         }
 
         async function finish() {
             document.getElementById('loading').classList.add('active');
-            
             try {
                 const res = await fetch(`${API_URL}/api/submit`, {
                     method: 'POST', headers: {'Content-Type':'application/json'},
                     body: JSON.stringify({ teamName: myTeam, classLevel: curClass, answers })
                 });
                 const data = await res.json();
-                
                 document.getElementById('game').classList.remove('active');
                 document.getElementById('loading').classList.remove('active');
                 document.getElementById('result').classList.add('active');
-                
                 document.getElementById('finalScore').innerText = data.percentage + '%';
                 
                 confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
                 tg.HapticFeedback.notificationOccurred('success');
                 
+                // Сначала загружаем текущее состояние
                 loadLb();
-                socket.on('leaderboard_update', loadLb);
+                
+                // Включаем прослушку обновлений
+                socket.on('leaderboard_update', () => {
+                    console.log("Пришло обновление таблицы!");
+                    loadLb(); // Перезагружаем список при сигнале от сервера
+                });
+
             } catch (e) {
                 alert("Ошибка отправки результатов");
                 document.getElementById('loading').classList.remove('active');
