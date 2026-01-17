@@ -8,66 +8,234 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script> 
     <style>
-        :root { --bg-color:#f2f2f7; --text-color:#000; --glass-bg:rgba(255,255,255,0.75); --accent:#007aff; }
-        [data-theme="dark"] { --bg-color:#000; --text-color:#fff; --glass-bg:rgba(30,30,30,0.75); }
-        body { background:var(--bg-color); color:var(--text-color); font-family:-apple-system, sans-serif; margin:0; padding:20px; height:100vh; overflow:hidden; }
-        .screen { position:absolute; top:0; left:0; width:100%; height:100%; padding:20px; opacity:0; pointer-events:none; transition:0.3s; transform:scale(0.95); overflow-y:auto; }
-        .screen.active { opacity:1; pointer-events:auto; transform:scale(1); }
-        .card { background:var(--glass-bg); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-radius:20px; padding:20px; margin-bottom:15px; text-align:center; }
-        .btn { background:var(--accent); color:#fff; border:none; padding:15px; width:100%; border-radius:14px; font-size:17px; font-weight:600; margin-top:10px; cursor:pointer; }
-        .btn:active { transform:scale(0.96); }
-        .input { background:rgba(128,128,128,0.1); border:none; padding:15px; border-radius:14px; width:100%; font-size:17px; text-align:center; color:var(--text-color); outline:none; }
-        .opt { background:var(--glass-bg); padding:15px; border-radius:14px; margin-bottom:10px; border:1px solid rgba(128,128,128,0.2); cursor:pointer; transition:0.2s; }
-        .opt.selected { background:rgba(0,122,255,0.1); border-color:var(--accent); color:var(--accent); }
-        .lb-item { display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid rgba(128,128,128,0.1); }
-        .loader { border:4px solid rgba(128,128,128,0.2); border-top:4px solid var(--accent); border-radius:50%; width:30px; height:30px; animation:spin 1s linear infinite; margin:0 auto; }
-        @keyframes spin { 0% { transform:rotate(0deg); } 100% { transform:rotate(360deg); } }
+        :root { 
+            --bg-color: #f2f2f7; 
+            --text-color: #000; 
+            --glass-bg: rgba(255,255,255,0.75); 
+            --accent: #007aff; 
+            --safe-bottom: env(safe-area-inset-bottom, 20px);
+        }
+        [data-theme="dark"] { 
+            --bg-color: #000; 
+            --text-color: #fff; 
+            --glass-bg: rgba(30,30,30,0.75); 
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body { 
+            background: var(--bg-color); 
+            color: var(--text-color); 
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Helvetica, Arial, sans-serif; 
+            margin: 0; 
+            padding: 0; 
+            /* Используем dvh для корректной высоты на мобильных */
+            height: 100dvh; 
+            width: 100%;
+            overflow: hidden; 
+        }
+
+        .screen { 
+            position: absolute; 
+            top: 0; left: 0; 
+            width: 100%; 
+            height: 100%; 
+            padding: 20px; 
+            /* Отступ снизу, чтобы кнопка не налипала на home bar айфона */
+            padding-bottom: calc(20px + var(--safe-bottom));
+            
+            display: flex; 
+            flex-direction: column; 
+            justify-content: space-between; /* Распределяем контент: верх, центр, низ */
+            
+            opacity: 0; 
+            pointer-events: none; 
+            transition: 0.3s; 
+            transform: scale(0.95); 
+        }
+        
+        .screen.active { 
+            opacity: 1; 
+            pointer-events: auto; 
+            transform: scale(1); 
+            z-index: 1;
+        }
+
+        /* Обертка для центральной части, чтобы она была ровно посередине */
+        .content-center {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            overflow-y: auto; /* Если экран очень маленький, появится скролл внутри */
+        }
+
+        .card { 
+            background: var(--glass-bg); 
+            backdrop-filter: blur(20px); 
+            -webkit-backdrop-filter: blur(20px); 
+            border-radius: 20px; 
+            padding: 20px; 
+            margin-bottom: 15px; 
+            text-align: center; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+
+        .app-title {
+            font-size: 32px;
+            font-weight: 800;
+            text-align: center;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        .btn { 
+            background: var(--accent); 
+            color: #fff; 
+            border: none; 
+            padding: 16px; 
+            width: 100%; 
+            border-radius: 14px; 
+            font-size: 17px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            flex-shrink: 0; /* Чтобы кнопка не сплющивалась */
+            box-shadow: 0 4px 10px rgba(0,122,255,0.3);
+        }
+        .btn:active { transform: scale(0.96); }
+
+        /* Кнопки выбора класса */
+        .class-selector {
+            display: flex; 
+            gap: 10px; 
+            justify-content: center; 
+            margin-bottom: 20px;
+        }
+        .class-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 0;
+            width: 60px;
+            font-size: 18px;
+            font-weight: 600;
+            opacity: 0.5;
+            transition: 0.2s;
+        }
+        .class-btn.active { opacity: 1; transform: scale(1.1); box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+
+        .input { 
+            background: rgba(128,128,128,0.1); 
+            border: none; 
+            padding: 16px; 
+            border-radius: 14px; 
+            width: 100%; 
+            font-size: 17px; 
+            text-align: center; 
+            color: var(--text-color); 
+            outline: none; 
+        }
+
+        .opt { 
+            background: var(--glass-bg); 
+            padding: 16px; 
+            border-radius: 14px; 
+            margin-bottom: 10px; 
+            border: 1px solid rgba(128,128,128,0.2); 
+            cursor: pointer; 
+            transition: 0.2s; 
+            font-size: 17px;
+            font-weight: 500;
+        }
+        .opt:active { transform: scale(0.98); }
+        .opt.selected { background: rgba(0,122,255,0.1); border-color: var(--accent); color: var(--accent); font-weight: 700; }
+
+        .lb-item { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid rgba(128,128,128,0.1); font-size: 16px; }
+        
+        .loader-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+        }
+        .loader { border: 4px solid rgba(128,128,128,0.2); border-top: 4px solid var(--accent); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 20px;}
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
     <div id="login" class="screen active">
-        <h1 style="text-align:center;">Викторина</h1>
-        <div class="card">
-            <p>Выберите класс</p>
-            <div style="display:flex; gap:10px; justify-content:center; margin-bottom:20px;">
-                <button class="btn" style="width:auto; padding:10px 20px;" onclick="setClass(7)">7</button>
-                <button class="btn" style="width:auto; padding:10px 20px;" onclick="setClass(8)">8</button>
-                <button class="btn" style="width:auto; padding:10px 20px;" onclick="setClass(9)">9</button>
+        <div class="app-title">Викторина</div>
+        
+        <div class="content-center">
+            <div class="card">
+                <p style="margin-top:0; color:#8e8e93; font-weight:600; font-size:13px; text-transform:uppercase;">Выберите класс</p>
+                <div class="class-selector">
+                    <button class="class-btn" id="btn7" onclick="setClass(7, this)">7</button>
+                    <button class="class-btn" id="btn8" onclick="setClass(8, this)">8</button>
+                    <button class="class-btn active" id="btn9" onclick="setClass(9, this)">9</button>
+                </div>
+                
+                <p style="margin-bottom:10px; color:#8e8e93; font-weight:600; font-size:13px; text-transform:uppercase;">Команда</p>
+                <input type="text" id="teamName" class="input" placeholder="Название...">
             </div>
-            <div id="classDisplay" style="font-weight:bold; margin-bottom:10px;">Выбрано: 9 класс</div>
-            <input type="text" id="teamName" class="input" placeholder="Название команды">
         </div>
-        <button class="btn" onclick="startGame()">Начать</button>
+
+        <button class="btn" onclick="startGame()">Начать тест</button>
     </div>
 
     <div id="game" class="screen">
-        <h3 id="qCounter" style="text-align:center;">Вопрос 1</h3>
-        <div class="card">
-            <h2 id="qText">Загрузка...</h2>
+        <h3 id="qCounter" style="text-align:center; margin-top: 10px; color: #8e8e93;">Вопрос 1</h3>
+        
+        <div class="content-center">
+            <div class="card">
+                <h2 id="qText" style="font-size: 22px; margin: 0;">Загрузка...</h2>
+            </div>
+            <div id="opts" style="margin-top: 10px;"></div>
         </div>
-        <div id="opts"></div>
+        
+        <div style="height: 20px;"></div>
     </div>
 
     <div id="result" class="screen">
-        <h1 style="text-align:center;">Итоги</h1>
-        <div class="card">
-            <h1>Ваш счет</h1>
-            <h2 id="finalScore" style="color:var(--accent); font-size:48px;">0%</h2>
+        <div class="app-title">Итоги</div>
+        
+        <div class="content-center">
+            <div class="card">
+                <h1 style="margin:0; font-size: 20px; color: #8e8e93;">Ваш результат</h1>
+                <h2 id="finalScore" style="color:var(--accent); font-size:60px; margin: 10px 0;">0%</h2>
+            </div>
+            
+            <div class="card" style="flex-grow: 1; overflow-y: auto; max-height: 40vh;">
+                <h3 style="margin-top:0;">Таблица лидеров</h3>
+                <div id="lb">
+                    <div class="loader"></div>
+                </div>
+            </div>
         </div>
-        <div class="card">
-            <h3>Таблица лидеров</h3>
-            <div id="lb">Загрузка...</div>
+
+        <button class="btn" onclick="location.reload()">В меню</button>
+    </div>
+
+    <div id="loading" class="screen" style="z-index: 100; background: var(--bg-color);">
+        <div class="loader-container">
+            <div class="loader"></div>
+            <h3>Соединение...</h3>
         </div>
-        <button class="btn" onclick="location.reload()">Выход</button>
     </div>
 
     <script>
-        const tg = window.Telegram.WebApp; tg.expand();
+        const tg = window.Telegram.WebApp; 
+        tg.expand();
 
-        // --- ВСТАВЬ СЮДА ССЫЛКУ С RENDER (например 'https://my-api.onrender.com') ---
+        // --- ВСТАВЬ СЮДА СВОЮ ССЫЛКУ С RENDER ---
         const API_URL = 'https://my-quiz-server.onrender.com'; 
-        // ---------------------------------------------------------------------------
+        // ----------------------------------------
+
+        // Автоматически определяем тему
+        if (tg.colorScheme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
 
         const socket = io(API_URL);
         let curClass = 9;
@@ -76,35 +244,78 @@
         let curIdx = 0;
         let myTeam = "";
 
-        if (tg.colorScheme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+        // Убираем экран загрузки при подключении
+        socket.on('connect', () => {
+            document.getElementById('loading').classList.remove('active');
+        });
 
-        function setClass(n) { curClass = n; document.getElementById('classDisplay').innerText = `Выбрано: ${n} класс`; }
+        function setClass(n, btn) { 
+            curClass = n; 
+            // Визуальное переключение кнопок
+            document.querySelectorAll('.class-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            tg.HapticFeedback.selectionChanged();
+        }
 
         async function startGame() {
-            myTeam = document.getElementById('teamName').value.trim();
-            if (!myTeam) return alert("Введите имя команды!");
+            const input = document.getElementById('teamName');
+            myTeam = input.value.trim();
             
-            document.getElementById('login').classList.remove('active');
+            if (!myTeam) {
+                tg.HapticFeedback.notificationOccurred('error');
+                input.focus();
+                // Тряска поля ввода
+                input.style.border = "1px solid red";
+                setTimeout(() => input.style.border = "none", 300);
+                return;
+            }
+            
+            // Показываем лоадер
+            document.getElementById('loading').classList.add('active');
             
             try {
                 // Получаем вопросы
                 const res = await fetch(`${API_URL}/api/questions/${curClass}`);
                 questions = await res.json();
-                if(!questions.length) return alert("Вопросов нет!");
+                
+                if(!questions || questions.length === 0) {
+                    alert("Вопросов для этого класса пока нет!");
+                    document.getElementById('loading').classList.remove('active');
+                    return;
+                }
 
                 socket.emit('join_class', curClass);
+                
+                // Переключаем экран
+                document.getElementById('loading').classList.remove('active');
+                document.getElementById('login').classList.remove('active');
                 document.getElementById('game').classList.add('active');
+                
                 renderQ();
-            } catch(e) { alert("Ошибка сервера!"); location.reload(); }
+            } catch(e) { 
+                alert("Ошибка сервера! Проверьте интернет."); 
+                document.getElementById('loading').classList.remove('active');
+            }
+            tg.HapticFeedback.impactOccurred('light');
         }
 
         function renderQ() {
             if (curIdx >= questions.length) return finish();
+            
             const q = questions[curIdx];
-            document.getElementById('qCounter').innerText = `Вопрос ${curIdx+1}/${questions.length}`;
-            document.getElementById('qText').innerText = q.question_text;
+            document.getElementById('qCounter').innerText = `Вопрос ${curIdx+1} из ${questions.length}`;
+            
+            // Анимация смены текста
+            const txt = document.getElementById('qText');
+            txt.style.opacity = 0;
+            setTimeout(() => {
+                txt.innerText = q.question_text;
+                txt.style.opacity = 1;
+            }, 200);
+
             const div = document.getElementById('opts');
             div.innerHTML = '';
+            
             q.options.forEach((txt, i) => {
                 const btn = document.createElement('div');
                 btn.className = 'opt';
@@ -115,41 +326,86 @@
         }
 
         function select(qid, idx, el) {
+            // Защита от двойного клика
             if(document.querySelector('.opt.selected')) return;
+            
             el.classList.add('selected');
+            tg.HapticFeedback.impactOccurred('medium');
+            
             answers.push({ question_id: qid, selected_index: idx });
             curIdx++;
-            setTimeout(renderQ, 500);
+            
+            // Небольшая задержка перед следующим вопросом
+            setTimeout(renderQ, 400);
         }
 
         async function finish() {
-            document.getElementById('game').classList.remove('active');
-            document.getElementById('result').classList.add('active');
+            document.getElementById('loading').classList.add('active'); // Лоадер пока отправляем
             
-            const res = await fetch(`${API_URL}/api/submit`, {
-                method: 'POST', headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({ teamName: myTeam, classLevel: curClass, answers })
-            });
-            const data = await res.json();
-            
-            document.getElementById('finalScore').innerText = data.percentage + '%';
-            confetti();
-            loadLb();
-            socket.on('leaderboard_update', loadLb);
+            try {
+                const res = await fetch(`${API_URL}/api/submit`, {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({ teamName: myTeam, classLevel: curClass, answers })
+                });
+                const data = await res.json();
+                
+                document.getElementById('game').classList.remove('active');
+                document.getElementById('loading').classList.remove('active');
+                document.getElementById('result').classList.add('active');
+                
+                document.getElementById('finalScore').innerText = data.percentage + '%';
+                
+                confetti({
+                    particleCount: 150,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+                tg.HapticFeedback.notificationOccurred('success');
+                
+                loadLb();
+                socket.on('leaderboard_update', loadLb);
+            } catch (e) {
+                alert("Ошибка отправки результатов");
+                document.getElementById('loading').classList.remove('active');
+            }
         }
 
         async function loadLb() {
-            const res = await fetch(`${API_URL}/api/leaderboard/${curClass}`);
-            const data = await res.json();
-            const div = document.getElementById('lb');
-            div.innerHTML = '';
-            data.forEach((r, i) => {
-                const row = document.createElement('div');
-                row.className = 'lb-item';
-                if(r.team_name === myTeam) row.style.color = 'var(--accent)';
-                row.innerHTML = `<span>#${i+1} ${r.team_name}</span> <b>${r.percentage}%</b>`;
-                div.appendChild(row);
-            });
+            try {
+                const res = await fetch(`${API_URL}/api/leaderboard/${curClass}`);
+                const data = await res.json();
+                const div = document.getElementById('lb');
+                div.innerHTML = '';
+                
+                if (data.length === 0) {
+                    div.innerHTML = '<p style="color:#8e8e93">Пока пусто</p>';
+                    return;
+                }
+
+                data.forEach((r, i) => {
+                    const row = document.createElement('div');
+                    row.className = 'lb-item';
+                    
+                    // Выделяем свою команду
+                    if(r.team_name === myTeam) {
+                        row.style.border = '1px solid var(--accent)';
+                        row.style.backgroundColor = 'rgba(0,122,255,0.05)';
+                        row.style.borderRadius = '10px';
+                        row.style.fontWeight = 'bold';
+                    }
+                    
+                    row.innerHTML = `
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span style="font-weight:800; color:#8e8e93; width:20px;">${i+1}</span> 
+                            <span>${r.team_name}</span>
+                        </div> 
+                        <b style="color:var(--accent)">${r.percentage}%</b>
+                    `;
+                    div.appendChild(row);
+                });
+            } catch (e) {
+                console.error(e);
+            }
         }
     </script>
 </body>
