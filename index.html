@@ -207,7 +207,6 @@
                     document.querySelector('#waiting .wait-msg').innerText = "Ждем начала игры...";
                 } 
                 else if (sIndex >= questions.length) {
-                    // Конец игры
                     showLeaderboardScreen();
                 } 
                 else {
@@ -247,7 +246,6 @@
         async function submitAnswer() {
             if (selectedOptionIndex === null) return;
             
-            // Сразу переходим в ожидание
             switchScreen('waiting');
             document.querySelector('#waiting .wait-msg').innerText = "Ответ принят! Ждем остальных...";
             
@@ -268,14 +266,14 @@
         }
 
         async function showLeaderboardScreen() {
+            // Если я учитель - мне НЕЛЬЗЯ сюда переключаться автоматически
+            if (isTeacher) return; 
+
             switchScreen('result');
             const div = document.getElementById('lbList');
             const scoreDisplay = document.getElementById('finalScore');
             
-            // Если учитель - скрываем его "личный счет"
-            if (isTeacher) {
-                document.getElementById('myScoreCard').style.display = 'none';
-            }
+            document.getElementById('myScoreCard').style.display = 'block';
 
             try {
                 const res = await fetch(`${API_URL}/api/leaderboard/${curClass}`);
@@ -303,11 +301,9 @@
                     div.appendChild(row);
                 });
 
-                // Обновляем личный счет
                 scoreDisplay.innerText = myScoreVal + " из 10";
                 
-                // Если я не учитель и попал сюда первый раз - конфетти
-                if (!isTeacher && myScoreVal > 0) {
+                if (myScoreVal > 0) {
                      confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
                 }
 
@@ -323,8 +319,6 @@
                 
                 socket.emit('join_class', curClass);
                 
-                // Учитель тоже подписывается на обновления таблицы в конце
-                // Но ему нужны свои слушатели для пульта
                 socket.on('sync_state', (state) => {
                     const idx = state.currentIndex;
                     const statusEl = document.getElementById('teacherStatus');
@@ -338,8 +332,8 @@
                         textEl.innerText = questions[idx].question_text;
                     } else {
                         statusEl.innerText = "Конец игры";
-                        textEl.innerText = "Все вопросы пройдены. Показана таблица.";
-                        showLeaderboardScreen(); // Показываем таблицу учителю тоже
+                        textEl.innerText = "Вопросы закончились. Чтобы начать заново, нажмите 'Сброс'.";
+                        // ЗДЕСЬ Я УБРАЛ showLeaderboardScreen(), чтобы пульт не исчезал
                     }
                 });
 
