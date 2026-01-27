@@ -3,21 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>School Quiz</title>
+    <title>Quiz</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script> 
     <style>
         :root { 
-            --bg-color: #f2f2f7; --text-color: #000; --glass-bg: rgba(255,255,255,0.75); 
-            --accent: #007aff; --gray-btn: #e5e5ea; --danger: #ff3b30;
+            --bg-color: #f2f2f7; 
+            --text-color: #000; 
+            --glass-bg: rgba(255,255,255,0.75); 
+            --accent: #007aff; 
+            --gray-btn: #e5e5ea;
             --safe-bottom: env(safe-area-inset-bottom, 20px);
             --live-color: #ff3b30;
         }
-        [data-theme="dark"] { --bg-color: #000; --text-color: #fff; --glass-bg: rgba(30,30,30,0.75); --gray-btn: #2c2c2e; }
+        [data-theme="dark"] { 
+            --bg-color: #000; 
+            --text-color: #fff; 
+            --glass-bg: rgba(30,30,30,0.75); 
+            --gray-btn: #2c2c2e;
+        }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { background: var(--bg-color); color: var(--text-color); font-family: -apple-system, sans-serif; margin: 0; padding: 0; height: 100dvh; width: 100vw; overflow: hidden; }
+
+        body { 
+            background: var(--bg-color); 
+            color: var(--text-color); 
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Helvetica, Arial, sans-serif; 
+            margin: 0; padding: 0; 
+            height: 100dvh; width: 100vw; overflow: hidden; 
+        }
 
         .screen { 
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
@@ -26,33 +41,40 @@
             opacity: 0; pointer-events: none; transition: 0.3s; transform: scale(0.98); 
         }
         .screen.active { opacity: 1; pointer-events: auto; transform: scale(1); z-index: 1; }
-        
+
         .content-center { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; overflow-y: auto; width: 100%; }
-        .card { background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-radius: 20px; padding: 20px; margin-bottom: 15px; text-align: center; width: 100%; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
 
-        .app-title { font-size: 28px; font-weight: 800; text-align: center; margin-top: 20px; margin-bottom: 10px; }
-        .btn { background: var(--accent); color: #fff; border: none; padding: 16px; width: 100%; border-radius: 14px; font-size: 17px; font-weight: 600; cursor: pointer; transition: 0.2s; margin-top: 10px; }
+        .card { 
+            background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); 
+            border-radius: 20px; padding: 20px; margin-bottom: 15px; text-align: center; width: 100%; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+
+        .app-title { font-size: 32px; font-weight: 800; text-align: center; margin-top: 40px; margin-bottom: 20px; }
+
+        .btn { 
+            background: var(--accent); color: #fff; border: none; padding: 16px; width: 100%; 
+            border-radius: 14px; font-size: 17px; font-weight: 600; cursor: pointer; flex-shrink: 0; 
+            transition: 0.2s; box-shadow: 0 4px 10px rgba(0,122,255,0.3);
+        }
         .btn:active { transform: scale(0.96); }
-        .btn:disabled { background: var(--gray-btn); color: #8e8e93; transform: none; }
-        .btn-danger { background: var(--danger); }
+        .btn:disabled { background: var(--gray-btn); color: #8e8e93; box-shadow: none; cursor: default; transform: none; }
 
-        .input { background: rgba(128,128,128,0.1); border: none; padding: 16px; border-radius: 14px; width: 100%; font-size: 17px; text-align: center; color: var(--text-color); outline: none; }
-        
         .class-selector { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; width: 100%; }
         .class-btn { background: var(--accent); color: white; border: none; border-radius: 12px; padding: 12px 0; flex: 1; font-size: 18px; font-weight: 600; opacity: 0.5; transition: 0.2s; }
-        .class-btn.active { opacity: 1; transform: scale(1.05); }
+        .class-btn.active { opacity: 1; transform: scale(1.05); box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
 
-        .opt { background: var(--glass-bg); padding: 16px; border-radius: 14px; margin-bottom: 10px; border: 2px solid transparent; cursor: pointer; font-size: 17px; font-weight: 500; width: 100%; text-align: left; }
+        .input { background: rgba(128,128,128,0.1); border: none; padding: 16px; border-radius: 14px; width: 100%; font-size: 17px; text-align: center; color: var(--text-color); outline: none; }
+
+        .opt { background: var(--glass-bg); padding: 16px; border-radius: 14px; margin-bottom: 10px; border: 2px solid transparent; cursor: pointer; transition: 0.2s; font-size: 17px; font-weight: 500; width: 100%; text-align: left; }
+        .opt:active { transform: scale(0.98); }
         .opt.selected { background: rgba(0,122,255,0.1); border-color: var(--accent); color: var(--accent); font-weight: 600; }
 
-        .loader { border: 4px solid rgba(128,128,128,0.2); border-top: 4px solid var(--accent); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto; }
+        .lb-item { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid rgba(128,128,128,0.1); font-size: 16px; }
+        
+        .loader-container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; }
+        .loader { border: 4px solid rgba(128,128,128,0.2); border-top: 4px solid var(--accent); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 20px;}
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
-        .wait-msg { font-size: 18px; font-weight: 600; color: #8e8e93; margin-top: 20px; }
-        
-        /* Стили учителя */
-        .teacher-panel { display: flex; flex-direction: column; gap: 10px; }
-        .status-badge { display: inline-block; padding: 5px 10px; border-radius: 15px; background: rgba(0,122,255,0.1); color: var(--accent); font-size: 12px; font-weight: bold; margin-bottom: 10px; }
 
         /* ИНДИКАТОР LIVE */
         .live-indicator {
@@ -61,8 +83,12 @@
             padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 700;
             margin-bottom: 10px;
         }
-        .live-dot { width: 8px; height: 8px; background: var(--live-color); border-radius: 50%; animation: pulse 1.5s infinite; }
+        .live-dot {
+            width: 8px; height: 8px; background: var(--live-color); border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+
     </style>
 </head>
 <body>
@@ -70,94 +96,90 @@
     <div id="login" class="screen active">
         <div class="content-center">
             <div class="app-title">Викторина</div>
+            
             <div class="card">
                 <p style="margin-top:0; color:#8e8e93; font-weight:600; font-size:13px; text-transform:uppercase;">Выберите класс</p>
                 <div class="class-selector">
-                    <button class="class-btn" onclick="setClass(7, this)">7</button>
-                    <button class="class-btn" onclick="setClass(8, this)">8</button>
-                    <button class="class-btn active" onclick="setClass(9, this)">9</button>
+                    <button class="class-btn" id="btn7" onclick="setClass(7, this)">7</button>
+                    <button class="class-btn" id="btn8" onclick="setClass(8, this)">8</button>
+                    <button class="class-btn active" id="btn9" onclick="setClass(9, this)">9</button>
                 </div>
-                <input type="text" id="teamName" class="input" placeholder="Название команды">
+                
+                <p style="margin-bottom:10px; color:#8e8e93; font-weight:600; font-size:13px; text-transform:uppercase;">Команда</p>
+                <input type="text" id="teamName" class="input" placeholder="Название...">
             </div>
         </div>
-        <button class="btn" onclick="connectToGame()">Войти</button>
-    </div>
 
-    <div id="waiting" class="screen">
-        <div class="content-center" style="text-align: center;">
-            <div class="loader"></div>
-            <div class="wait-msg">Ждем учителя...</div>
-            <p style="color:#8e8e93; font-size: 14px; margin-top: 10px;">Приготовьтесь к следующему вопросу</p>
-        </div>
+        <button class="btn" onclick="startGame()">Начать тест</button>
     </div>
 
     <div id="game" class="screen">
-        <h3 id="qCounter" style="text-align:center; color: #8e8e93; margin-top:20px;">Вопрос 1</h3>
+        <h3 id="qCounter" style="text-align:center; margin-top: 20px; color: #8e8e93;">Вопрос 1</h3>
+        
         <div class="content-center">
             <div class="card">
-                <h2 id="qText" style="font-size: 20px; margin: 0; line-height: 1.4;">...</h2>
+                <h2 id="qText" style="font-size: 20px; margin: 0; line-height: 1.4;">Загрузка...</h2>
             </div>
             <div id="opts" style="width: 100%;"></div>
         </div>
+        
         <button class="btn" id="confirmBtn" onclick="submitAnswer()" disabled>Ответить</button>
     </div>
 
-    <div id="teacher" class="screen">
-        <div class="app-title">Пульт Учителя</div>
-        <div class="content-center">
-            <div class="card">
-                <div class="status-badge" id="teacherStatus">Ожидание начала</div>
-                <h2 id="teacherQText" style="font-size: 18px;">Игра еще не началась</h2>
-            </div>
-            <div class="teacher-panel">
-                <button class="btn" onclick="teacherNext()">Следующий вопрос</button>
-                <button class="btn btn-danger" onclick="teacherReset()">Сброс игры</button>
-            </div>
-        </div>
-        <button class="btn" style="background:transparent; color:#8e8e93;" onclick="location.reload()">Выход</button>
-    </div>
-
     <div id="result" class="screen">
-        <div class="app-title">Результаты</div>
+        <div class="app-title" style="margin-top: 20px; margin-bottom: 10px;">Результаты</div>
+        
         <div class="content-center">
             <div style="text-align: center;">
-                <div class="live-indicator"><div class="live-dot"></div> LIVE</div>
-            </div>
-            
-            <div class="card" id="myScoreCard">
-                <h1 style="margin:0; font-size: 18px; color: #8e8e93;">Ваш счет</h1>
-                <h2 id="finalScore" style="color:var(--accent); font-size:48px; margin: 10px 0;">...</h2>
+                <div class="live-indicator">
+                    <div class="live-dot"></div> LIVE
+                </div>
             </div>
 
-            <div class="card" style="flex-grow: 1; overflow-y: auto; max-height: 50vh;" id="lbList">
-                <div class="loader"></div>
+            <div class="card" id="scoreCard">
+                <h1 style="margin:0; font-size: 18px; color: #8e8e93;">Ваш результат</h1>
+                <h2 id="finalScore" style="color:var(--accent); font-size:60px; margin: 10px 0;">0%</h2>
+            </div>
+            
+            <div class="card" style="flex-grow: 1; overflow-y: auto; max-height: 60vh; position: relative;">
+                <h3 style="margin-top:0; margin-bottom: 15px;">Таблица лидеров</h3>
+                <div id="lb">
+                    <div class="loader"></div>
+                </div>
             </div>
         </div>
-        <button class="btn" onclick="location.reload()">Выход</button>
+
+        <button class="btn" id="exitBtn" onclick="location.reload()">В меню</button>
     </div>
 
     <div id="loading" class="screen" style="z-index: 100; background: var(--bg-color);">
-        <div class="content-center" style="align-items: center;">
+        <div class="loader-container">
             <div class="loader"></div>
-            <h3>Загрузка...</h3>
+            <h3>Соединение...</h3>
         </div>
     </div>
 
     <script>
-        const tg = window.Telegram.WebApp; tg.expand();
-        
-        // --- ВСТАВЬ ССЫЛКУ С RENDER ---
+        const tg = window.Telegram.WebApp; 
+        tg.expand();
+
+        // --- ВСТАВЬ СЮДА СВОЮ ССЫЛКУ С RENDER ---
         const API_URL = 'https://my-quiz-server.onrender.com'; 
-        // ------------------------------
+        // ----------------------------------------
 
         if (tg.colorScheme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
 
         const socket = io(API_URL);
         let curClass = 9;
-        let myTeam = "";
         let questions = [];
+        let answers = [];
+        let curIdx = 0;
+        let myTeam = "";
         let selectedOptionIndex = null;
-        let isTeacher = false;
+
+        socket.on('connect', () => {
+            document.getElementById('loading').classList.remove('active');
+        });
 
         function setClass(n, btn) { 
             curClass = n; 
@@ -166,199 +188,162 @@
             tg.HapticFeedback.selectionChanged();
         }
 
-        async function connectToGame() {
+        async function startGame() {
             const input = document.getElementById('teamName');
             myTeam = input.value.trim();
-            if (!myTeam) return alert("Введите имя!");
-
-            if (myTeam === "учитель1234") {
-                isTeacher = true;
-                startTeacherMode();
+            
+            if (!myTeam) {
+                tg.HapticFeedback.notificationOccurred('error');
+                input.focus();
+                input.style.border = "1px solid red";
+                setTimeout(() => input.style.border = "none", 300);
                 return;
             }
+
+            // --- РЕЖИМ УЧИТЕЛЯ ---
+            if (myTeam === "учитель1234") {
+                // 1. Скрываем экран входа
+                document.getElementById('login').classList.remove('active');
+                
+                // 2. Показываем экран результатов
+                document.getElementById('result').classList.add('active');
+                
+                // 3. Прячем карточку с "Ваш результат"
+                document.getElementById('scoreCard').style.display = 'none';
+                
+                // 4. Подключаемся к сокету нужного класса, чтобы видеть обновления
+                socket.emit('join_class', curClass);
+                
+                // 5. Грузим таблицу сразу
+                loadLb();
+                
+                // 6. Подписываемся на обновления
+                socket.on('leaderboard_update', loadLb);
+                
+                tg.HapticFeedback.notificationOccurred('success');
+                return; // ПРЕКРАЩАЕМ ВЫПОЛНЕНИЕ ФУНКЦИИ (ИГРА НЕ НАЧИНАЕТСЯ)
+            }
+            // ---------------------
 
             document.getElementById('loading').classList.add('active');
             try {
                 const res = await fetch(`${API_URL}/api/questions/${curClass}`);
                 questions = await res.json();
-                
-                if(!questions.length) {
-                    alert("Нет вопросов!");
+                if(!questions || questions.length === 0) {
+                    alert("Вопросов для этого класса пока нет!");
                     document.getElementById('loading').classList.remove('active');
                     return;
                 }
-
                 socket.emit('join_class', curClass);
-                setupSocketListeners();
-                
                 document.getElementById('loading').classList.remove('active');
                 document.getElementById('login').classList.remove('active');
-                switchScreen('waiting');
-
-            } catch(e) { alert("Ошибка сети"); location.reload(); }
+                document.getElementById('game').classList.add('active');
+                renderQ();
+            } catch(e) { 
+                alert("Ошибка сервера!"); 
+                document.getElementById('loading').classList.remove('active');
+            }
+            tg.HapticFeedback.impactOccurred('light');
         }
 
-        function setupSocketListeners() {
-            socket.on('sync_state', (state) => {
-                const sIndex = state.currentIndex;
-
-                if (sIndex === -1) {
-                    switchScreen('waiting');
-                    document.querySelector('#waiting .wait-msg').innerText = "Ждем начала игры...";
-                } 
-                else if (sIndex >= questions.length) {
-                    showLeaderboardScreen();
-                } 
-                else {
-                    renderQuestion(sIndex);
-                }
-            });
-        }
-
-        function renderQuestion(index) {
+        function renderQ() {
+            if (curIdx >= questions.length) return finish();
             selectedOptionIndex = null;
             document.getElementById('confirmBtn').disabled = true;
-            document.getElementById('confirmBtn').innerText = "Ответить";
-            
-            const q = questions[index];
-            document.getElementById('qCounter').innerText = `Вопрос ${index+1} из ${questions.length}`;
-            document.getElementById('qText').innerText = q.question_text;
-            
+            document.getElementById('confirmBtn').innerText = (curIdx === questions.length - 1) ? "Завершить тест" : "Ответить";
+            const q = questions[curIdx];
+            document.getElementById('qCounter').innerText = `Вопрос ${curIdx+1} из ${questions.length}`;
+            const txt = document.getElementById('qText');
+            txt.style.opacity = 0;
+            setTimeout(() => { txt.innerText = q.question_text; txt.style.opacity = 1; }, 200);
             const div = document.getElementById('opts');
             div.innerHTML = '';
             q.options.forEach((txt, i) => {
                 const btn = document.createElement('div');
                 btn.className = 'opt';
                 btn.innerText = txt;
-                btn.onclick = () => {
-                    document.querySelectorAll('.opt').forEach(b => b.classList.remove('selected'));
-                    btn.classList.add('selected');
-                    selectedOptionIndex = i;
-                    document.getElementById('confirmBtn').disabled = false;
-                    tg.HapticFeedback.selectionChanged();
-                };
+                btn.onclick = () => selectOption(i, btn);
                 div.appendChild(btn);
             });
-
-            switchScreen('game');
         }
 
-        async function submitAnswer() {
+        function selectOption(idx, el) {
+            document.querySelectorAll('.opt').forEach(b => b.classList.remove('selected'));
+            el.classList.add('selected');
+            selectedOptionIndex = idx;
+            document.getElementById('confirmBtn').disabled = false;
+            tg.HapticFeedback.selectionChanged();
+        }
+
+        function submitAnswer() {
             if (selectedOptionIndex === null) return;
-            
-            switchScreen('waiting');
-            document.querySelector('#waiting .wait-msg').innerText = "Ответ принят! Ждем остальных...";
-            
-            const qText = document.getElementById('qText').innerText;
-            const currentQ = questions.find(q => q.question_text === qText);
-            
-            if (currentQ) {
-                 await fetch(`${API_URL}/api/submit`, {
-                    method: 'POST',
-                    headers: {'Content-Type':'application/json'},
-                    body: JSON.stringify({ 
-                        teamName: myTeam, 
-                        classLevel: curClass, 
-                        answers: [{ question_id: currentQ.id, selected_index: selectedOptionIndex }] 
-                    })
+            const q = questions[curIdx];
+            answers.push({ question_id: q.id, selected_index: selectedOptionIndex });
+            tg.HapticFeedback.impactOccurred('medium');
+            curIdx++;
+            renderQ();
+        }
+
+        async function finish() {
+            document.getElementById('loading').classList.add('active');
+            try {
+                const res = await fetch(`${API_URL}/api/submit`, {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({ teamName: myTeam, classLevel: curClass, answers })
                 });
+                const data = await res.json();
+                document.getElementById('game').classList.remove('active');
+                document.getElementById('loading').classList.remove('active');
+                document.getElementById('result').classList.add('active');
+                document.getElementById('finalScore').innerText = data.percentage + '%';
+                
+                confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+                tg.HapticFeedback.notificationOccurred('success');
+                
+                loadLb();
+                socket.on('leaderboard_update', loadLb);
+            } catch (e) {
+                alert("Ошибка отправки результатов");
+                document.getElementById('loading').classList.remove('active');
             }
         }
 
-        async function showLeaderboardScreen() {
-            // Если я учитель - мне НЕЛЬЗЯ сюда переключаться автоматически
-            if (isTeacher) return; 
-
-            switchScreen('result');
-            const div = document.getElementById('lbList');
-            const scoreDisplay = document.getElementById('finalScore');
-            
-            document.getElementById('myScoreCard').style.display = 'block';
-
+        async function loadLb() {
             try {
                 const res = await fetch(`${API_URL}/api/leaderboard/${curClass}`);
                 const data = await res.json();
-                
+                const div = document.getElementById('lb');
                 div.innerHTML = '';
-                let myScoreVal = 0;
+                
+                if (data.length === 0) {
+                    div.innerHTML = '<p style="color:#8e8e93">Пока пусто</p>';
+                    return;
+                }
 
                 data.forEach((r, i) => {
                     const row = document.createElement('div');
-                    row.style.display = "flex";
-                    row.style.justifyContent = "space-between";
-                    row.style.padding = "12px";
-                    row.style.borderBottom = "1px solid rgba(0,0,0,0.1)";
+                    row.className = 'lb-item';
                     
+                    // Если это учитель - не подсвечиваем его имя (его там и нет)
+                    // Если это ученик - подсвечиваем
                     if(r.team_name === myTeam) {
-                        row.style.color = "var(--accent)";
-                        row.style.fontWeight = "bold";
-                        row.style.background = "rgba(0,122,255,0.05)";
-                        row.style.borderRadius = "8px";
-                        myScoreVal = r.score;
+                        row.style.border = '1px solid var(--accent)';
+                        row.style.backgroundColor = 'rgba(0,122,255,0.05)';
+                        row.style.borderRadius = '10px';
+                        row.style.fontWeight = 'bold';
                     }
                     
-                    row.innerHTML = `<span>${i+1}. ${r.team_name}</span> <span>${r.score}</span>`;
+                    row.innerHTML = `
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span style="font-weight:800; color:#8e8e93; width:20px;">${i+1}</span> 
+                            <span>${r.team_name}</span>
+                        </div> 
+                        <b style="color:var(--accent)">${r.percentage}%</b>
+                    `;
                     div.appendChild(row);
                 });
-
-                scoreDisplay.innerText = myScoreVal + " из 10";
-                
-                if (myScoreVal > 0) {
-                     confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-                }
-
-            } catch(e) {}
+            } catch (e) { console.error(e); }
         }
-
-        // --- УЧИТЕЛЬ ---
-        async function startTeacherMode() {
-            document.getElementById('loading').classList.add('active');
-            try {
-                const res = await fetch(`${API_URL}/api/questions/${curClass}`);
-                questions = await res.json();
-                
-                socket.emit('join_class', curClass);
-                
-                socket.on('sync_state', (state) => {
-                    const idx = state.currentIndex;
-                    const statusEl = document.getElementById('teacherStatus');
-                    const textEl = document.getElementById('teacherQText');
-                    
-                    if (idx === -1) {
-                        statusEl.innerText = "Режим: Ожидание";
-                        textEl.innerText = "Нажмите 'Следующий вопрос' для старта";
-                    } else if (idx < questions.length) {
-                        statusEl.innerText = `Вопрос ${idx+1} / ${questions.length}`;
-                        textEl.innerText = questions[idx].question_text;
-                    } else {
-                        statusEl.innerText = "Конец игры";
-                        textEl.innerText = "Вопросы закончились. Чтобы начать заново, нажмите 'Сброс'.";
-                        // ЗДЕСЬ Я УБРАЛ showLeaderboardScreen(), чтобы пульт не исчезал
-                    }
-                });
-
-                document.getElementById('loading').classList.remove('active');
-                document.getElementById('login').classList.remove('active');
-                switchScreen('teacher');
-                
-            } catch(e) { alert("Ошибка"); location.reload(); }
-        }
-
-        function teacherNext() {
-            socket.emit('teacher_next_question', curClass);
-            tg.HapticFeedback.impactOccurred('medium');
-        }
-        function teacherReset() {
-            if(confirm("Сбросить игру?")) {
-                socket.emit('teacher_reset', curClass);
-            }
-        }
-
-        function switchScreen(id) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
-        }
-
     </script>
 </body>
 </html>
