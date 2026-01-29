@@ -126,7 +126,7 @@
     </div>
 
     <div id="waiting" class="screen">
-        <div class="content-center" style="text-align: center;">
+        <div class="content-center" style="text-align: center; align-items: center;">
             <div class="loader"></div>
             <h2 style="font-size: 20px;">Ждем учителя...</h2>
             <p style="color:#8e8e93; font-size: 14px; margin-top: 10px;">Внимание на экран/доску</p>
@@ -267,7 +267,13 @@
 
                 // 1. Игра завершена
                 if (idx === 'finished') {
-                    showResults();
+                    if (isTeacher) {
+                        // ИСПРАВЛЕНИЕ: Если я учитель, я обновляю свой пульт, а не лечу в результаты
+                        updateTeacherScreen('finished');
+                    } else {
+                        // Если я ученик - показываю результаты
+                        showResults();
+                    }
                     return;
                 }
 
@@ -288,7 +294,6 @@
                     if (idx < questions.length) {
                         renderQuestion(idx);
                     } else {
-                        // Если индекс вышел за пределы (на всякий случай)
                         switchScreen('waiting');
                     }
                 }
@@ -297,7 +302,7 @@
 
         // --- УЧЕНИК: ПОКАЗ ВОПРОСА ---
         function renderQuestion(index) {
-            curIdx = index; // Синхронизируем локальный индекс
+            curIdx = index;
             selectedOptionIndex = null;
             
             // Сбрасываем кнопку
@@ -335,13 +340,12 @@
         async function submitAnswer() {
             if (selectedOptionIndex === null) return;
             
-            // Сразу переключаем на ожидание, не ждем ответа сервера
+            // Сразу переключаем на ожидание
             switchScreen('waiting');
             tg.HapticFeedback.impactOccurred('medium');
 
-            const q = questions[curIdx]; // Берем текущий вопрос
+            const q = questions[curIdx]; 
             
-            // Отправляем на сервер
             await fetch(`${API_URL}/api/submit`, {
                 method: 'POST', headers: {'Content-Type':'application/json'},
                 body: JSON.stringify({ 
@@ -360,11 +364,14 @@
             document.getElementById('loading').classList.remove('active');
             document.getElementById('login').classList.remove('active');
             switchScreen('teacher');
-            updateTeacherScreen(-1); // Инициализация
+            // updateTeacherScreen вызовется сам, когда придет sync_state от сокета
         }
 
         // --- УЧИТЕЛЬ: ОБНОВЛЕНИЕ ЭКРАНА ---
         function updateTeacherScreen(idx) {
+            // Гарантируем, что мы на экране учителя
+            switchScreen('teacher');
+
             const mainBtn = document.getElementById('teacherMainBtn');
             const qText = document.getElementById('teacherQText');
             const optsDiv = document.getElementById('teacherOpts');
@@ -379,37 +386,46 @@
             }
 
             // 2. Вопросы закончились
-            if (idx >= questions.length) {
-                mainBtn.innerText = "Показать результаты";
-                mainBtn.onclick = () => socket.emit('teacher_finish', curClass);
-                qText.innerText = "Вопросы закончились";
+            if (idx === 'finished' || idx >= questions.length) {
+                mainBtn.innerText = "Показать результаты ученикам";
+                // На самом деле они уже видят результаты, но можно оставить кнопку для вида
+                // Или переделать в "Завершить полностью"
+                mainBtn.onclick = () => { /* Можно добавить действие, если нужно */ };
+                mainBtn.style.display = 'none'; // Скрываем главную кнопку, оставляем только Сброс
+                
+                qText.innerText = "Викторина завершена. Нажмите 'Сброс' для новой игры.";
                 optsDiv.innerHTML = "";
                 return;
+            } else {
+                mainBtn.style.display = 'block';
             }
 
             // 3. Идет вопрос
             curIdx = idx;
-            mainBtn.innerText = "Следующий вопрос";
-            mainBtn.onclick = () => socket.emit('teacher_next', curClass);
-            
-            // Показываем вопрос учителю (чтобы читал)
             const q = questions[idx];
+            
+            // Логика кнопок
+            if (idx === questions.length - 1) {
+                 mainBtn.innerText = "Завершить и показать результаты";
+                 mainBtn.onclick = () => socket.emit('teacher_finish', curClass);
+            } else {
+                 mainBtn.innerText = "Следующий вопрос";
+                 mainBtn.onclick = () => socket.emit('teacher_next', curClass);
+            }
+            
             qText.innerText = `[${idx+1}/${questions.length}] ${q.question_text}`;
             
             optsDiv.innerHTML = "";
             q.options.forEach(optTxt => {
                 const d = document.createElement('div');
-                d.className = 'opt teacher-view'; // Неактивный стиль
+                d.className = 'opt teacher-view';
                 d.innerText = optTxt;
                 optsDiv.appendChild(d);
             });
         }
 
-        // --- УЧИТЕЛЬ: ДЕЙСТВИЯ ---
         function teacherAction() {
-            // Эта функция переозначается внутри updateTeacherScreen
-            // Но на всякий случай оставим заглушку
-            socket.emit('teacher_next', curClass);
+            // Заглушка, реальные действия вешаются в updateTeacherScreen
         }
 
         function teacherReset() {
@@ -422,13 +438,15 @@
         async function showResults() {
             switchScreen('result');
             
-            // Если учитель - скрываем "Ваш результат"
             if(isTeacher) {
-                document.getElementById('scoreCard').style.display = 'none';
-                document.getElementById('exitBtn').style.display = 'none';
-            } else {
-                document.getElementById('scoreCard').style.display = 'block';
+                // Если каким-то чудом учитель сюда попал (хотя мы запретили в setupSocketListeners)
+                // Вернем его на пульт
+                updateTeacherScreen('finished');
+                return; 
             }
+
+            // Для ученика:
+            document.getElementById('scoreCard').style.display = 'block';
 
             // Грузим таблицу
             const div = document.getElementById('lb');
@@ -459,7 +477,7 @@
                 });
 
                 document.getElementById('finalScore').innerText = myScore + "%";
-                if(!isTeacher) confetti();
+                confetti();
 
             } catch(e) { console.error(e); }
         }
