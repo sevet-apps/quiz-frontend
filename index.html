@@ -59,6 +59,7 @@
         }
         .btn:active { transform: scale(0.96); }
         .btn:disabled { background: var(--gray-btn); color: #8e8e93; box-shadow: none; cursor: default; transform: none; }
+        .btn-danger { background: var(--live-color); margin-top: 10px; }
 
         .class-selector { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; width: 100%; }
         .class-btn { background: var(--accent); color: white; border: none; border-radius: 12px; padding: 12px 0; flex: 1; font-size: 18px; font-weight: 600; opacity: 0.5; transition: 0.2s; }
@@ -69,6 +70,8 @@
         .opt { background: var(--glass-bg); padding: 16px; border-radius: 14px; margin-bottom: 10px; border: 2px solid transparent; cursor: pointer; transition: 0.2s; font-size: 17px; font-weight: 500; width: 100%; text-align: left; }
         .opt:active { transform: scale(0.98); }
         .opt.selected { background: rgba(0,122,255,0.1); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+        /* Стиль для ответов на экране учителя (неактивные) */
+        .opt.teacher-view { cursor: default; opacity: 0.8; pointer-events: none; }
 
         .lb-item { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid rgba(128,128,128,0.1); font-size: 16px; }
         
@@ -76,17 +79,13 @@
         .loader { border: 4px solid rgba(128,128,128,0.2); border-top: 4px solid var(--accent); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 20px;}
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* ИНДИКАТОР LIVE */
         .live-indicator {
             display: inline-flex; align-items: center; gap: 6px;
             background: rgba(255, 59, 48, 0.1); color: var(--live-color);
             padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 700;
             margin-bottom: 10px;
         }
-        .live-dot {
-            width: 8px; height: 8px; background: var(--live-color); border-radius: 50%;
-            animation: pulse 1.5s infinite;
-        }
+        .live-dot { width: 8px; height: 8px; background: var(--live-color); border-radius: 50%; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
 
     </style>
@@ -105,12 +104,12 @@
                     <button class="class-btn active" id="btn9" onclick="setClass(9, this)">9</button>
                 </div>
                 
-                <p style="margin-bottom:10px; color:#8e8e93; font-weight:600; font-size:13px; text-transform:uppercase;">Команда</p>
-                <input type="text" id="teamName" class="input" placeholder="Название...">
+                <p style="margin-bottom:10px; color:#8e8e93; font-weight:600; font-size:13px; text-transform:uppercase;">Ученик</p>
+                <input type="text" id="teamName" class="input" placeholder="Ваше Имя и Фамилия">
             </div>
         </div>
 
-        <button class="btn" onclick="startGame()">Начать тест</button>
+        <button class="btn" onclick="startGame()">Войти</button>
     </div>
 
     <div id="game" class="screen">
@@ -124,6 +123,28 @@
         </div>
         
         <button class="btn" id="confirmBtn" onclick="submitAnswer()" disabled>Ответить</button>
+    </div>
+
+    <div id="waiting" class="screen">
+        <div class="content-center" style="text-align: center;">
+            <div class="loader"></div>
+            <h2 style="font-size: 20px;">Ждем учителя...</h2>
+            <p style="color:#8e8e93; font-size: 14px; margin-top: 10px;">Внимание на экран/доску</p>
+        </div>
+    </div>
+
+    <div id="teacher" class="screen">
+        <h3 id="teacherHeader" style="text-align:center; margin-top: 20px; color: #8e8e93; font-weight:bold;">Панель Учителя</h3>
+        
+        <div class="content-center">
+            <div class="card" id="teacherCard">
+                <h2 id="teacherQText" style="font-size: 18px; margin: 0; line-height: 1.4;">Викторина еще не началась</h2>
+            </div>
+            <div id="teacherOpts" style="width: 100%;"></div>
+        </div>
+
+        <button class="btn" id="teacherMainBtn" onclick="teacherAction()">Начать викторину</button>
+        <button class="btn btn-danger" onclick="teacherReset()">Сброс (Рестарт)</button>
     </div>
 
     <div id="result" class="screen">
@@ -149,7 +170,7 @@
             </div>
         </div>
 
-        <button class="btn" id="exitBtn" onclick="location.reload()">В меню</button>
+        <button class="btn" id="exitBtn" onclick="location.reload()">Выход</button>
     </div>
 
     <div id="loading" class="screen" style="z-index: 100; background: var(--bg-color);">
@@ -172,10 +193,10 @@
         const socket = io(API_URL);
         let curClass = 9;
         let questions = [];
-        let answers = [];
         let curIdx = 0;
         let myTeam = "";
         let selectedOptionIndex = null;
+        let isTeacher = false;
 
         socket.on('connect', () => {
             document.getElementById('loading').classList.remove('active');
@@ -200,45 +221,36 @@
                 return;
             }
 
-            // --- РЕЖИМ УЧИТЕЛЯ ---
-            if (myTeam === "учитель1234") {
-                // 1. Скрываем экран входа
-                document.getElementById('login').classList.remove('active');
-                
-                // 2. Показываем экран результатов
-                document.getElementById('result').classList.add('active');
-                
-                // 3. Прячем карточку с "Ваш результат"
-                document.getElementById('scoreCard').style.display = 'none';
-                
-                // 4. Подключаемся к сокету нужного класса, чтобы видеть обновления
-                socket.emit('join_class', curClass);
-                
-                // 5. Грузим таблицу сразу
-                loadLb();
-                
-                // 6. Подписываемся на обновления
-                socket.on('leaderboard_update', loadLb);
-                
-                tg.HapticFeedback.notificationOccurred('success');
-                return; // ПРЕКРАЩАЕМ ВЫПОЛНЕНИЕ ФУНКЦИИ (ИГРА НЕ НАЧИНАЕТСЯ)
-            }
-            // ---------------------
-
             document.getElementById('loading').classList.add('active');
+            
             try {
+                // Грузим вопросы
                 const res = await fetch(`${API_URL}/api/questions/${curClass}`);
                 questions = await res.json();
+                
                 if(!questions || questions.length === 0) {
-                    alert("Вопросов для этого класса пока нет!");
+                    alert("Вопросов нет!");
                     document.getElementById('loading').classList.remove('active');
                     return;
                 }
+
+                // --- РЕЖИМ УЧИТЕЛЯ ---
+                if (myTeam === "учитель1234") {
+                    isTeacher = true;
+                    startTeacherMode();
+                    return;
+                }
+
+                // --- РЕЖИМ УЧЕНИКА ---
                 socket.emit('join_class', curClass);
+                setupSocketListeners(); // Слушаем команды сервера
+                
                 document.getElementById('loading').classList.remove('active');
                 document.getElementById('login').classList.remove('active');
-                document.getElementById('game').classList.add('active');
-                renderQ();
+                
+                // Сразу показываем экран ожидания, пока сервер не скажет, какой вопрос
+                switchScreen('waiting');
+
             } catch(e) { 
                 alert("Ошибка сервера!"); 
                 document.getElementById('loading').classList.remove('active');
@@ -246,103 +258,215 @@
             tg.HapticFeedback.impactOccurred('light');
         }
 
-        function renderQ() {
-            if (curIdx >= questions.length) return finish();
-            selectedOptionIndex = null;
-            document.getElementById('confirmBtn').disabled = true;
-            document.getElementById('confirmBtn').innerText = (curIdx === questions.length - 1) ? "Завершить тест" : "Ответить";
-            const q = questions[curIdx];
-            document.getElementById('qCounter').innerText = `Вопрос ${curIdx+1} из ${questions.length}`;
-            const txt = document.getElementById('qText');
-            txt.style.opacity = 0;
-            setTimeout(() => { txt.innerText = q.question_text; txt.style.opacity = 1; }, 200);
-            const div = document.getElementById('opts');
-            div.innerHTML = '';
-            q.options.forEach((txt, i) => {
-                const btn = document.createElement('div');
-                btn.className = 'opt';
-                btn.innerText = txt;
-                btn.onclick = () => selectOption(i, btn);
-                div.appendChild(btn);
+        // --- ЛОГИКА СЛУШАТЕЛЯ (ГЛАВНАЯ ЧАСТЬ) ---
+        function setupSocketListeners() {
+            socket.on('sync_state', (state) => {
+                // state = { currentIndex: -1 или 0... или 'finished' }
+                
+                const idx = state.currentIndex;
+
+                // 1. Игра завершена
+                if (idx === 'finished') {
+                    showResults();
+                    return;
+                }
+
+                // 2. Игра не началась (Лобби)
+                if (idx === -1) {
+                    if (isTeacher) updateTeacherScreen(-1);
+                    else switchScreen('waiting');
+                    return;
+                }
+
+                // 3. Идет вопрос (idx >= 0)
+                // Если мы учитель -> обновляем пульт
+                if (isTeacher) {
+                    updateTeacherScreen(idx);
+                } 
+                // Если мы ученик -> показываем вопрос
+                else {
+                    if (idx < questions.length) {
+                        renderQuestion(idx);
+                    } else {
+                        // Если индекс вышел за пределы (на всякий случай)
+                        switchScreen('waiting');
+                    }
+                }
             });
         }
 
-        function selectOption(idx, el) {
-            document.querySelectorAll('.opt').forEach(b => b.classList.remove('selected'));
-            el.classList.add('selected');
-            selectedOptionIndex = idx;
-            document.getElementById('confirmBtn').disabled = false;
-            tg.HapticFeedback.selectionChanged();
+        // --- УЧЕНИК: ПОКАЗ ВОПРОСА ---
+        function renderQuestion(index) {
+            curIdx = index; // Синхронизируем локальный индекс
+            selectedOptionIndex = null;
+            
+            // Сбрасываем кнопку
+            const btn = document.getElementById('confirmBtn');
+            btn.disabled = true;
+            btn.innerText = "Ответить";
+
+            const q = questions[index];
+            document.getElementById('qCounter').innerText = `Вопрос ${index+1} из ${questions.length}`;
+            
+            const txt = document.getElementById('qText');
+            txt.innerText = q.question_text;
+            
+            const div = document.getElementById('opts');
+            div.innerHTML = '';
+            
+            q.options.forEach((optTxt, i) => {
+                const optBtn = document.createElement('div');
+                optBtn.className = 'opt';
+                optBtn.innerText = optTxt;
+                optBtn.onclick = () => {
+                    document.querySelectorAll('#game .opt').forEach(b => b.classList.remove('selected'));
+                    optBtn.classList.add('selected');
+                    selectedOptionIndex = i;
+                    btn.disabled = false;
+                    tg.HapticFeedback.selectionChanged();
+                };
+                div.appendChild(optBtn);
+            });
+
+            switchScreen('game');
         }
 
-        function submitAnswer() {
+        // --- УЧЕНИК: ОТПРАВКА ОТВЕТА ---
+        async function submitAnswer() {
             if (selectedOptionIndex === null) return;
-            const q = questions[curIdx];
-            answers.push({ question_id: q.id, selected_index: selectedOptionIndex });
+            
+            // Сразу переключаем на ожидание, не ждем ответа сервера
+            switchScreen('waiting');
             tg.HapticFeedback.impactOccurred('medium');
-            curIdx++;
-            renderQ();
+
+            const q = questions[curIdx]; // Берем текущий вопрос
+            
+            // Отправляем на сервер
+            await fetch(`${API_URL}/api/submit`, {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ 
+                    teamName: myTeam, 
+                    classLevel: curClass, 
+                    answers: [{ question_id: q.id, selected_index: selectedOptionIndex }] 
+                })
+            });
         }
 
-        async function finish() {
-            document.getElementById('loading').classList.add('active');
-            try {
-                const res = await fetch(`${API_URL}/api/submit`, {
-                    method: 'POST', headers: {'Content-Type':'application/json'},
-                    body: JSON.stringify({ teamName: myTeam, classLevel: curClass, answers })
-                });
-                const data = await res.json();
-                document.getElementById('game').classList.remove('active');
-                document.getElementById('loading').classList.remove('active');
-                document.getElementById('result').classList.add('active');
-                document.getElementById('finalScore').innerText = data.percentage + '%';
-                
-                confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-                tg.HapticFeedback.notificationOccurred('success');
-                
-                loadLb();
-                socket.on('leaderboard_update', loadLb);
-            } catch (e) {
-                alert("Ошибка отправки результатов");
-                document.getElementById('loading').classList.remove('active');
+        // --- УЧИТЕЛЬ: ЗАПУСК ---
+        function startTeacherMode() {
+            socket.emit('join_class', curClass);
+            setupSocketListeners();
+            
+            document.getElementById('loading').classList.remove('active');
+            document.getElementById('login').classList.remove('active');
+            switchScreen('teacher');
+            updateTeacherScreen(-1); // Инициализация
+        }
+
+        // --- УЧИТЕЛЬ: ОБНОВЛЕНИЕ ЭКРАНА ---
+        function updateTeacherScreen(idx) {
+            const mainBtn = document.getElementById('teacherMainBtn');
+            const qText = document.getElementById('teacherQText');
+            const optsDiv = document.getElementById('teacherOpts');
+            
+            // 1. Начало игры
+            if (idx === -1) {
+                mainBtn.innerText = "Начать викторину";
+                mainBtn.onclick = () => socket.emit('teacher_next', curClass);
+                qText.innerText = "Нажмите кнопку, чтобы показать 1-й вопрос";
+                optsDiv.innerHTML = "";
+                return;
+            }
+
+            // 2. Вопросы закончились
+            if (idx >= questions.length) {
+                mainBtn.innerText = "Показать результаты";
+                mainBtn.onclick = () => socket.emit('teacher_finish', curClass);
+                qText.innerText = "Вопросы закончились";
+                optsDiv.innerHTML = "";
+                return;
+            }
+
+            // 3. Идет вопрос
+            curIdx = idx;
+            mainBtn.innerText = "Следующий вопрос";
+            mainBtn.onclick = () => socket.emit('teacher_next', curClass);
+            
+            // Показываем вопрос учителю (чтобы читал)
+            const q = questions[idx];
+            qText.innerText = `[${idx+1}/${questions.length}] ${q.question_text}`;
+            
+            optsDiv.innerHTML = "";
+            q.options.forEach(optTxt => {
+                const d = document.createElement('div');
+                d.className = 'opt teacher-view'; // Неактивный стиль
+                d.innerText = optTxt;
+                optsDiv.appendChild(d);
+            });
+        }
+
+        // --- УЧИТЕЛЬ: ДЕЙСТВИЯ ---
+        function teacherAction() {
+            // Эта функция переозначается внутри updateTeacherScreen
+            // Но на всякий случай оставим заглушку
+            socket.emit('teacher_next', curClass);
+        }
+
+        function teacherReset() {
+            if(confirm("Сбросить игру в начало?")) {
+                socket.emit('teacher_reset', curClass);
             }
         }
 
-        async function loadLb() {
+        // --- ОБЩЕЕ: РЕЗУЛЬТАТЫ ---
+        async function showResults() {
+            switchScreen('result');
+            
+            // Если учитель - скрываем "Ваш результат"
+            if(isTeacher) {
+                document.getElementById('scoreCard').style.display = 'none';
+                document.getElementById('exitBtn').style.display = 'none';
+            } else {
+                document.getElementById('scoreCard').style.display = 'block';
+            }
+
+            // Грузим таблицу
+            const div = document.getElementById('lb');
             try {
                 const res = await fetch(`${API_URL}/api/leaderboard/${curClass}`);
                 const data = await res.json();
-                const div = document.getElementById('lb');
-                div.innerHTML = '';
                 
-                if (data.length === 0) {
-                    div.innerHTML = '<p style="color:#8e8e93">Пока пусто</p>';
-                    return;
-                }
+                div.innerHTML = '';
+                let myScore = 0;
 
                 data.forEach((r, i) => {
                     const row = document.createElement('div');
                     row.className = 'lb-item';
                     
-                    // Если это учитель - не подсвечиваем его имя (его там и нет)
-                    // Если это ученик - подсвечиваем
-                    if(r.team_name === myTeam) {
+                    if (r.team_name === myTeam) {
                         row.style.border = '1px solid var(--accent)';
-                        row.style.backgroundColor = 'rgba(0,122,255,0.05)';
+                        row.style.background = 'rgba(0,122,255,0.05)';
                         row.style.borderRadius = '10px';
                         row.style.fontWeight = 'bold';
+                        myScore = r.percentage;
                     }
                     
                     row.innerHTML = `
-                        <div style="display:flex; align-items:center; gap:10px;">
-                            <span style="font-weight:800; color:#8e8e93; width:20px;">${i+1}</span> 
-                            <span>${r.team_name}</span>
-                        </div> 
-                        <b style="color:var(--accent)">${r.percentage}%</b>
+                        <div><span style="color:#8e8e93; font-weight:800; width:25px; display:inline-block;">${i+1}</span> ${r.team_name}</div>
+                        <div style="color:var(--accent); font-weight:700;">${r.score}</div>
                     `;
                     div.appendChild(row);
                 });
-            } catch (e) { console.error(e); }
+
+                document.getElementById('finalScore').innerText = myScore + "%";
+                if(!isTeacher) confetti();
+
+            } catch(e) { console.error(e); }
+        }
+
+        function switchScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
         }
     </script>
 </body>
