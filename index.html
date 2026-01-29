@@ -70,7 +70,6 @@
         .opt { background: var(--glass-bg); padding: 16px; border-radius: 14px; margin-bottom: 10px; border: 2px solid transparent; cursor: pointer; transition: 0.2s; font-size: 17px; font-weight: 500; width: 100%; text-align: left; }
         .opt:active { transform: scale(0.98); }
         .opt.selected { background: rgba(0,122,255,0.1); border-color: var(--accent); color: var(--accent); font-weight: 600; }
-        /* Стиль для ответов на экране учителя (неактивные) */
         .opt.teacher-view { cursor: default; opacity: 0.8; pointer-events: none; }
 
         .lb-item { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid rgba(128,128,128,0.1); font-size: 16px; }
@@ -79,18 +78,39 @@
         .loader { border: 4px solid rgba(128,128,128,0.2); border-top: 4px solid var(--accent); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 20px;}
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        .live-indicator {
-            display: inline-flex; align-items: center; gap: 6px;
-            background: rgba(255, 59, 48, 0.1); color: var(--live-color);
-            padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 700;
-            margin-bottom: 10px;
-        }
+        .live-indicator { display: inline-flex; align-items: center; gap: 6px; background: rgba(255, 59, 48, 0.1); color: var(--live-color); padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-bottom: 10px; }
         .live-dot { width: 8px; height: 8px; background: var(--live-color); border-radius: 50%; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+
+        /* --- СЧЕТЧИК ОНЛАЙНА --- */
+        #onlineBadge {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            background: rgba(128,128,128,0.15);
+            backdrop-filter: blur(10px);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-color);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            opacity: 0; /* Скрыт по умолчанию */
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        [data-theme="dark"] #onlineBadge { background: rgba(255,255,255,0.15); }
 
     </style>
 </head>
 <body>
+
+    <div id="onlineBadge">
+        <span style="font-size: 14px;">👤</span> <span id="onlineCount">0</span>
+    </div>
 
     <div id="login" class="screen active">
         <div class="content-center">
@@ -152,9 +172,7 @@
         
         <div class="content-center">
             <div style="text-align: center;">
-                <div class="live-indicator">
-                    <div class="live-dot"></div> LIVE
-                </div>
+                <div class="live-indicator"><div class="live-dot"></div> LIVE</div>
             </div>
 
             <div class="card" id="scoreCard">
@@ -202,6 +220,11 @@
             document.getElementById('loading').classList.remove('active');
         });
 
+        // Слушаем количество онлайн
+        socket.on('online_count', (count) => {
+            document.getElementById('onlineCount').innerText = count;
+        });
+
         function setClass(n, btn) { 
             curClass = n; 
             document.querySelectorAll('.class-btn').forEach(b => b.classList.remove('active'));
@@ -224,7 +247,6 @@
             document.getElementById('loading').classList.add('active');
             
             try {
-                // Грузим вопросы
                 const res = await fetch(`${API_URL}/api/questions/${curClass}`);
                 questions = await res.json();
                 
@@ -233,6 +255,9 @@
                     document.getElementById('loading').classList.remove('active');
                     return;
                 }
+
+                // ПОКАЗЫВАЕМ СЧЕТЧИК ОНЛАЙНА
+                document.getElementById('onlineBadge').style.opacity = '1';
 
                 // --- РЕЖИМ УЧИТЕЛЯ ---
                 if (myTeam === "учитель1234") {
@@ -243,12 +268,10 @@
 
                 // --- РЕЖИМ УЧЕНИКА ---
                 socket.emit('join_class', curClass);
-                setupSocketListeners(); // Слушаем команды сервера
+                setupSocketListeners();
                 
                 document.getElementById('loading').classList.remove('active');
                 document.getElementById('login').classList.remove('active');
-                
-                // Сразу показываем экран ожидания, пока сервер не скажет, какой вопрос
                 switchScreen('waiting');
 
             } catch(e) { 
@@ -258,22 +281,14 @@
             tg.HapticFeedback.impactOccurred('light');
         }
 
-        // --- ЛОГИКА СЛУШАТЕЛЯ (ГЛАВНАЯ ЧАСТЬ) ---
         function setupSocketListeners() {
             socket.on('sync_state', (state) => {
-                // state = { currentIndex: -1 или 0... или 'finished' }
-                
                 const idx = state.currentIndex;
 
                 // 1. Игра завершена
                 if (idx === 'finished') {
-                    if (isTeacher) {
-                        // ИСПРАВЛЕНИЕ: Если я учитель, я обновляю свой пульт, а не лечу в результаты
-                        updateTeacherScreen('finished');
-                    } else {
-                        // Если я ученик - показываю результаты
-                        showResults();
-                    }
+                    if (isTeacher) updateTeacherScreen('finished');
+                    else showResults();
                     return;
                 }
 
@@ -284,35 +299,26 @@
                     return;
                 }
 
-                // 3. Идет вопрос (idx >= 0)
-                // Если мы учитель -> обновляем пульт
+                // 3. Идет вопрос
                 if (isTeacher) {
                     updateTeacherScreen(idx);
-                } 
-                // Если мы ученик -> показываем вопрос
-                else {
-                    if (idx < questions.length) {
-                        renderQuestion(idx);
-                    } else {
-                        switchScreen('waiting');
-                    }
+                } else {
+                    if (idx < questions.length) renderQuestion(idx);
+                    else switchScreen('waiting');
                 }
             });
         }
 
-        // --- УЧЕНИК: ПОКАЗ ВОПРОСА ---
         function renderQuestion(index) {
             curIdx = index;
             selectedOptionIndex = null;
             
-            // Сбрасываем кнопку
             const btn = document.getElementById('confirmBtn');
             btn.disabled = true;
             btn.innerText = "Ответить";
 
             const q = questions[index];
             document.getElementById('qCounter').innerText = `Вопрос ${index+1} из ${questions.length}`;
-            
             const txt = document.getElementById('qText');
             txt.innerText = q.question_text;
             
@@ -336,16 +342,12 @@
             switchScreen('game');
         }
 
-        // --- УЧЕНИК: ОТПРАВКА ОТВЕТА ---
         async function submitAnswer() {
             if (selectedOptionIndex === null) return;
-            
-            // Сразу переключаем на ожидание
             switchScreen('waiting');
             tg.HapticFeedback.impactOccurred('medium');
 
             const q = questions[curIdx]; 
-            
             await fetch(`${API_URL}/api/submit`, {
                 method: 'POST', headers: {'Content-Type':'application/json'},
                 body: JSON.stringify({ 
@@ -356,27 +358,20 @@
             });
         }
 
-        // --- УЧИТЕЛЬ: ЗАПУСК ---
         function startTeacherMode() {
             socket.emit('join_class', curClass);
             setupSocketListeners();
-            
             document.getElementById('loading').classList.remove('active');
             document.getElementById('login').classList.remove('active');
             switchScreen('teacher');
-            // updateTeacherScreen вызовется сам, когда придет sync_state от сокета
+            updateTeacherScreen(-1);
         }
 
-        // --- УЧИТЕЛЬ: ОБНОВЛЕНИЕ ЭКРАНА ---
         function updateTeacherScreen(idx) {
-            // Гарантируем, что мы на экране учителя
-            switchScreen('teacher');
-
             const mainBtn = document.getElementById('teacherMainBtn');
             const qText = document.getElementById('teacherQText');
             const optsDiv = document.getElementById('teacherOpts');
             
-            // 1. Начало игры
             if (idx === -1) {
                 mainBtn.innerText = "Начать викторину";
                 mainBtn.onclick = () => socket.emit('teacher_next', curClass);
@@ -385,14 +380,10 @@
                 return;
             }
 
-            // 2. Вопросы закончились
             if (idx === 'finished' || idx >= questions.length) {
-                mainBtn.innerText = "Показать результаты ученикам";
-                // На самом деле они уже видят результаты, но можно оставить кнопку для вида
-                // Или переделать в "Завершить полностью"
-                mainBtn.onclick = () => { /* Можно добавить действие, если нужно */ };
-                mainBtn.style.display = 'none'; // Скрываем главную кнопку, оставляем только Сброс
-                
+                mainBtn.innerText = "Показать результаты";
+                mainBtn.onclick = () => {}; 
+                mainBtn.style.display = 'none'; 
                 qText.innerText = "Викторина завершена. Нажмите 'Сброс' для новой игры.";
                 optsDiv.innerHTML = "";
                 return;
@@ -400,11 +391,9 @@
                 mainBtn.style.display = 'block';
             }
 
-            // 3. Идет вопрос
             curIdx = idx;
             const q = questions[idx];
             
-            // Логика кнопок
             if (idx === questions.length - 1) {
                  mainBtn.innerText = "Завершить и показать результаты";
                  mainBtn.onclick = () => socket.emit('teacher_finish', curClass);
@@ -414,7 +403,6 @@
             }
             
             qText.innerText = `[${idx+1}/${questions.length}] ${q.question_text}`;
-            
             optsDiv.innerHTML = "";
             q.options.forEach(optTxt => {
                 const d = document.createElement('div');
@@ -424,9 +412,7 @@
             });
         }
 
-        function teacherAction() {
-            // Заглушка, реальные действия вешаются в updateTeacherScreen
-        }
+        function teacherAction() {}
 
         function teacherReset() {
             if(confirm("Сбросить игру в начало?")) {
@@ -434,33 +420,26 @@
             }
         }
 
-        // --- ОБЩЕЕ: РЕЗУЛЬТАТЫ ---
         async function showResults() {
             switchScreen('result');
             
             if(isTeacher) {
-                // Если каким-то чудом учитель сюда попал (хотя мы запретили в setupSocketListeners)
-                // Вернем его на пульт
-                updateTeacherScreen('finished');
-                return; 
+                document.getElementById('scoreCard').style.display = 'none';
+                document.getElementById('exitBtn').style.display = 'none';
+            } else {
+                document.getElementById('scoreCard').style.display = 'block';
             }
 
-            // Для ученика:
-            document.getElementById('scoreCard').style.display = 'block';
-
-            // Грузим таблицу
             const div = document.getElementById('lb');
             try {
                 const res = await fetch(`${API_URL}/api/leaderboard/${curClass}`);
                 const data = await res.json();
-                
                 div.innerHTML = '';
                 let myScore = 0;
 
                 data.forEach((r, i) => {
                     const row = document.createElement('div');
                     row.className = 'lb-item';
-                    
                     if (r.team_name === myTeam) {
                         row.style.border = '1px solid var(--accent)';
                         row.style.background = 'rgba(0,122,255,0.05)';
@@ -468,18 +447,13 @@
                         row.style.fontWeight = 'bold';
                         myScore = r.percentage;
                     }
-                    
-                    row.innerHTML = `
-                        <div><span style="color:#8e8e93; font-weight:800; width:25px; display:inline-block;">${i+1}</span> ${r.team_name}</div>
-                        <div style="color:var(--accent); font-weight:700;">${r.score}</div>
-                    `;
+                    row.innerHTML = `<div><span style="color:#8e8e93; font-weight:800; width:25px; display:inline-block;">${i+1}</span> ${r.team_name}</div><div style="color:var(--accent); font-weight:700;">${r.score}</div>`;
                     div.appendChild(row);
                 });
 
                 document.getElementById('finalScore').innerText = myScore + "%";
-                confetti();
-
-            } catch(e) { console.error(e); }
+                if(!isTeacher) confetti();
+            } catch(e) {}
         }
 
         function switchScreen(id) {
