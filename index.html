@@ -87,29 +87,52 @@
             position: fixed;
             top: 16px;
             right: 16px;
-            background: rgba(128,128,128,0.15);
-            backdrop-filter: blur(10px);
-            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.6); /* Светлее */
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 6px 10px;
             border-radius: 20px;
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text-color);
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--accent); /* Синий цвет как у системы */
             z-index: 1000;
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 6px;
-            opacity: 0; /* Скрыт по умолчанию */
+            opacity: 0;
             transition: opacity 0.3s;
             pointer-events: none;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border: 1px solid rgba(255,255,255,0.2);
         }
-        [data-theme="dark"] #onlineBadge { background: rgba(255,255,255,0.15); }
+        [data-theme="dark"] #onlineBadge { 
+            background: rgba(40, 40, 40, 0.6); 
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* SVG ИКОНКА ЧЕЛОВЕКА */
+        .user-icon {
+            width: 16px;
+            height: 16px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
 
     </style>
 </head>
 <body>
 
     <div id="onlineBadge">
-        <span style="font-size: 14px;">👤</span> <span id="onlineCount">0</span>
+        <svg class="user-icon" viewBox="0 0 24 24">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+        <span id="onlineCount" style="position: relative; top: 1px;">0</span>
     </div>
 
     <div id="login" class="screen active">
@@ -267,7 +290,8 @@
                 }
 
                 // --- РЕЖИМ УЧЕНИКА ---
-                socket.emit('join_class', curClass);
+                // ОТПРАВЛЯЕМ isTeacher: false
+                socket.emit('join_class', { classLevel: curClass, isTeacher: false });
                 setupSocketListeners();
                 
                 document.getElementById('loading').classList.remove('active');
@@ -359,7 +383,9 @@
         }
 
         function startTeacherMode() {
-            socket.emit('join_class', curClass);
+            // ОТПРАВЛЯЕМ isTeacher: true
+            socket.emit('join_class', { classLevel: curClass, isTeacher: true });
+            
             setupSocketListeners();
             document.getElementById('loading').classList.remove('active');
             document.getElementById('login').classList.remove('active');
